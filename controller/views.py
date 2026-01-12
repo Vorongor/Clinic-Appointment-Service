@@ -10,5 +10,5 @@ def initial_develop_endpoint(request: Request) -> Response:
         status=status.HTTP_200_OK,
         data={
             "message": "Connection established!",
-        }
+        },
     )
