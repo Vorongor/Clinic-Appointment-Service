@@ -12,4 +12,11 @@ class DoctorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Doctor
-        fields = "__all__"
+        fields = [
+            "id",
+            "user",
+            "first_name",
+            "last_name",
+            "specializations",
+            "price_per_visit",
+        ]
