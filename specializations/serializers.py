@@ -6,4 +6,9 @@ from .models import Specialization
 class SpecializationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Specialization
-        fields = "__all__"
+        fields = [
+            "id",
+            "name",
+            "code",
+            "description",
+        ]
