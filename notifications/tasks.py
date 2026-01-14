@@ -2,7 +2,7 @@ from celery import shared_task
 from django.utils import timezone
 
 from .telegram_helper import send_telegram_message
-from appointments.models import Appointment
+from appointment.models import Appointment
 
 
 @shared_task
