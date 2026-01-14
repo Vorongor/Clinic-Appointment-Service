@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "user",
     "controller",
+    "specializations",
 ]
 
 MIDDLEWARE = [
