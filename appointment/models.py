@@ -16,7 +16,7 @@ class Appointment(models.Model):
         CANCELLED = ("CANCELLED", "Cancelled")
         NO_SHOW = ("NO_SHOW", "No Show")
 
-    doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True)
+    doctor = models.OneToOneField(Doctor, on_delete=models.CASCADE, null=True)
     patient = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="appointments"
     )
@@ -28,7 +28,7 @@ class Appointment(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
-        return f"Appointment #{self.id} | Doctor - {self.doctor} | Patient - {self.patient} | {self.status}"
+        return f"Appointment #{self.id} | Doctor - {self.doctor} | Patient - {self.patient.last_name} | {self.status}"
 
     class Meta:
         """
