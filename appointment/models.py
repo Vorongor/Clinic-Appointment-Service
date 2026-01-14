@@ -1,5 +1,11 @@
 from django.db import models
 
+from doctor.models import Doctor
+
+
+class Patient(models.Model):
+    pass
+
 
 class Appointment(models.Model):
     """
