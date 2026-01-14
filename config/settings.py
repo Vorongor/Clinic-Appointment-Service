@@ -25,6 +25,9 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "user",
     "controller",
+    "specializations",
+    "doctor",
+    "appointment",
 ]
 
 MIDDLEWARE = [
