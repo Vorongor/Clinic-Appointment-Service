@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
+from celery.schedules import crontab
 
 load_dotenv()
 
@@ -124,6 +125,12 @@ CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+CELERY_BEAT_SCHEDULE = {
+    'map-no-shows-every-midnight': {
+        'task': 'notifications.tasks.check_no_shows_daily',
+        'schedule': crontab(hour=19, minute=0),
+    },
+}
 
 AUTH_USER_MODEL = "user.User"
 
