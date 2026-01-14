@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "controller",
     "specializations",
+    "doctor",
 ]
 
 MIDDLEWARE = [
