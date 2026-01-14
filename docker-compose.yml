@@ -6,8 +6,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    volumes:
-      - ./data/db:/var/lib/postgresql
+#    volumes:
+#      - ./data/db:/var/lib/postgresql
     env_file:
       - .env
 
