@@ -21,9 +21,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
         )
 
 
-class AppointmentDetailSerializer(serializers.ModelSerializer):
+class AppointmentDetailSerializer(AppointmentSerializer):
     pass
 
 
-class AppointmentListSerializer(serializers.ModelSerializer):
-    pass
+class AppointmentListSerializer(AppointmentSerializer):
+    doctor = serializers.StringRelatedField(read_only=True)
+    patient = serializers.StringRelatedField(read_only=True)
