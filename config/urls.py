@@ -22,4 +22,5 @@ urlpatterns = [
         name="redoc",
     ),
     path("api/", include("specializations.urls")),
+    path("api/", include("doctor.urls")),
 ]
