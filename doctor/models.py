@@ -18,3 +18,20 @@ class Doctor(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+
+
+class DoctorSlot(models.Model):
+    doctor = models.ForeignKey(
+        Doctor, on_delete=models.CASCADE, related_name="slots"
+    )
+    start = models.DateTimeField()
+    end = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["start"]
+        unique_together = ("doctor", "start", "end")
+
+    def __str__(self):
+        return f"Slot #{self.id} " \
+               f"| Doctor - {self.doctor} | {self.start} - {self.end}"
