@@ -10,5 +10,5 @@ class SpecializationSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "code",
-            "description",
+            "description"
         ]
