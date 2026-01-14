@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "user",
     "controller",
     "specializations",
+    "doctor",
 ]
 
 MIDDLEWARE = [
