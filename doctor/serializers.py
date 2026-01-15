@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Doctor
+from .models import Doctor, DoctorSlot
 from specializations.models import Specialization
 
 
@@ -20,3 +20,17 @@ class DoctorSerializer(serializers.ModelSerializer):
             "specializations",
             "price_per_visit",
         ]
+
+
+class DoctorSlotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DoctorSlot
+        fields = ["id", "doctor", "start", "end", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def validate(self, data):
+        start = data.get("start")
+        end = data.get("end")
+        if start and end and start >= end:
+            raise serializers.ValidationError("start must be before end")
+        return data
