@@ -1,13 +1,13 @@
 from django.conf import settings
 from django.db import models
 
-from doctor.models import Doctor
+from doctor.models import DoctorSlot
 
 
 class Appointment(models.Model):
     """
     Appointment model - core of the project,
-    here described how booking should be looked
+    here described how booking should work
     """
 
     class Status(models.TextChoices):
@@ -16,7 +16,9 @@ class Appointment(models.Model):
         CANCELLED = ("CANCELLED", "Cancelled")
         NO_SHOW = ("NO_SHOW", "No Show")
 
-    doctor = models.OneToOneField(Doctor, on_delete=models.CASCADE, null=True)
+    doctor_slot = models.ForeignKey(
+        DoctorSlot, on_delete=models.CASCADE, related_name="appointment"
+    )
     patient = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="appointments"
     )
