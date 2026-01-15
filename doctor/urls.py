@@ -6,6 +6,7 @@ from .views import (
     DoctorSlotViewSet
 )
 
+<<<<<<< HEAD
 router = routers.DefaultRouter()
 router.register("doctors", DoctorViewSet, basename="doctor")
 router.register("slots", DoctorSlotViewSet, basename="slot")
@@ -16,6 +17,11 @@ doctor_router.register(
     DoctorSlotNestedViewSet,
     basename="doctor-slots"
 )
+=======
+router = DefaultRouter()
+router.register("", DoctorViewSet, basename="doctor")
+router.register("slots", DoctorViewSet, basename="slot")
+>>>>>>> origin/develop
 
 urlpatterns = [
     path("", include(router.urls)),

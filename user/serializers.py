@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from django.utils.translation import gettext_lazy as _
+from .models import Patient
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,3 +27,11 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(password)
             user.save()
         return user
+
+class PatientSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source="user.email", read_only=True)
+
+    class Meta:
+        model = Patient
+        fields = ("id", "user", "email", "birth_date", "phone_number", "gender")
+        read_only_fields = ("id", "user")
