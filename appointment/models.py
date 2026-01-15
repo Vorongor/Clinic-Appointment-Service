@@ -25,7 +25,7 @@ class Appointment(models.Model):
     status = models.CharField(
         max_length=15, choices=Status.choices, default=Status.BOOKED
     )
-    booked_at = models.DateTimeField()
+    booked_at = models.DateTimeField(null=True)
     completed_at = models.DateTimeField(null=True)
     price = models.DecimalField(max_digits=8, decimal_places=2, editable=False)
 

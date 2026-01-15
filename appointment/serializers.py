@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -6,7 +7,14 @@ from doctor.serializers import DoctorSlotSerializer
 from user.serializers import UserSerializer
 
 
+User = get_user_model()
+
+
 class AppointmentSerializer(serializers.ModelSerializer):
+    patient = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), required=False
+    )
+
     class Meta:
         model = Appointment
         fields = (
@@ -20,7 +28,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "id",
-            "patient",
             "status",
             "booked_at",
             "completed_at",
@@ -33,9 +40,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
         this is available only for admins
         """
         super().__init__(*args, **kwargs)
-        user = self.context["request"].user
-        if user and user.is_staff:
-            self.fields["patient"].read_only = False
+        request = self.context.get("request")
+        if request and request.user:
+            if not request.user.is_staff:
+                self.fields["patient"].read_only = True
+                self.fields["patient"].queryset = None
 
     def validate(self, attrs):
         """
@@ -72,7 +81,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         #         "You have unpaid penalties. Booking is blocked until payment."
         #     )
         #
-        # return attrs
+        return attrs
 
 
 class AppointmentDetailSerializer(AppointmentSerializer):

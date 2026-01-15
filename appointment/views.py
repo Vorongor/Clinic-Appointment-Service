@@ -67,8 +67,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         serializer.save(
             patient=patient,
-            price=slot.doctor.price_per_visit,
             booked_at=slot.start,
+            price=slot.doctor.price_per_visit,
         )
 
     """
