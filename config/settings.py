@@ -124,8 +124,13 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Rick and Morty API",
-    "DESCRIPTION": "Rick and Morty API documentations",
+    "TITLE": "Clinic Appointment Service",
+    "DESCRIPTION": "Online appointment management system that allows patients "
+                   "to register, browse doctors and available time slots, book "
+                   "appointments, cancel or complete visits. Payments are "
+                   "processed via Stripe. Staff receive Telegram notifications "
+                   "about new bookings, cancellations, no-shows, and "
+                   "successful payments",
     "VERSION": "1.0.0",
     "SERVE_INCLUDER_SCHEMA": False,
 }
