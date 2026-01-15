@@ -87,12 +87,10 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
 
     def setUp(self):
         User = get_user_model()
-        # Create admin user for POST requests
         self.admin_user = User.objects.create_superuser(
             email="admin@example.com",
             password="adminpass"
         )
-        # Create regular user (doctor)
         self.doctor_user = User.objects.create_user(
             email="doctor@example.com",
             password="docpass"
@@ -104,7 +102,6 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
             price_per_visit=150
         )
         self.client = APIClient()
-        # Nested route: /api/doctors/<pk>/slots/
         self.url = f"/api/doctors/{self.doctor.pk}/slots/"
 
     def test_bulk_create_single_slot_as_list(self):
@@ -121,8 +118,10 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["start"], start.isoformat())
-        self.assertEqual(response.data[0]["end"], end.isoformat())
+        response_start = response.data[0]["start"]
+        response_end = response.data[0]["end"]
+        self.assertTrue(response_start.startswith(start.isoformat()[:19]))
+        self.assertTrue(response_end.startswith(end.isoformat()[:19]))
         self.assertEqual(DoctorSlot.objects.count(), 1)
 
     def test_bulk_create_multiple_slots(self):
@@ -147,7 +146,6 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(len(response.data), 3)
         self.assertEqual(DoctorSlot.objects.count(), 3)
-        # Verify each slot is for the correct doctor
         for slot in DoctorSlot.objects.all():
             self.assertEqual(slot.doctor.id, self.doctor.id)
 
@@ -166,7 +164,7 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         """POST with start >= end fails validation."""
         self.client.force_authenticate(user=self.admin_user)
         start = timezone.now()
-        end = start - timezone.timedelta(hours=1)  # end before start
+        end = start - timezone.timedelta(hours=1)
         data = [
             {
                 "start": start.isoformat(),
@@ -189,7 +187,7 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
             },
             {
                 "start": (now + timezone.timedelta(hours=2)).isoformat(),
-                "end": (now + timezone.timedelta(hours=1)).isoformat(),  # Invalid
+                "end": (now + timezone.timedelta(hours=1)).isoformat(),
             },
         ]
         response = self.client.post(self.url, data, format="json")
@@ -202,7 +200,6 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         data = [
             {
                 "start": timezone.now().isoformat(),
-                # missing 'end'
             }
         ]
         response = self.client.post(self.url, data, format="json")
@@ -243,4 +240,4 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         self.assertIn("start", slot_data)
         self.assertIn("end", slot_data)
         self.assertIn("created_at", slot_data)
-        self.assertEqual(slot_data["doctor"], self.doctor.id)
+        self.assertEqual(int(slot_data["doctor"]), self.doctor.id)

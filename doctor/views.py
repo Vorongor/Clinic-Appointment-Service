@@ -60,7 +60,7 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        serializer = DoctorSlotSerializer(data=data, many=True)
+        serializer = DoctorSlotSerializer(data=data, many=True, context={'nested_create': True})
         serializer.is_valid(raise_exception=True)
 
         created = []
