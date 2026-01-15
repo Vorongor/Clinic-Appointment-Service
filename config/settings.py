@@ -12,7 +12,11 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "web"
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -24,12 +28,14 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "drf_spectacular",
+    "django_celery_beat",
     "user",
     "controller",
     "specializations",
     "doctor",
     "appointment",
     "notifications",
+    "payment",
 ]
 
 MIDDLEWARE = [
@@ -101,6 +107,12 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+STATIC_ROOT = BASE_DIR / "static"
+
+MEDIA_ROOT = BASE_DIR / "media"
+
+MEDIA_URL = "/media/"
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -112,9 +124,14 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Rick and Morty API",
-    "DESCRIPTION": "Rick and Morty API documentations",
-    "VERSION": "1.0.0",
+    "TITLE": "Clinic Appointment Service",
+    "DESCRIPTION": "Online appointment management system that allows patients "
+                   "to register, browse doctors and available time slots, book "
+                   "appointments, cancel or complete visits. Payments are "
+                   "processed via Stripe. Staff receive Telegram notifications "
+                   "about new bookings, cancellations, no-shows, and "
+                   "successful payments",
+    "VERSION": "1.0.1",
     "SERVE_INCLUDER_SCHEMA": False,
 }
 
@@ -141,3 +158,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Authorize",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZE",
 }
+
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", "http://localhost:8000/")
+STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", "http://localhost:8000/")
