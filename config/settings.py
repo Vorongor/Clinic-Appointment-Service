@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "doctor",
     "appointment",
     "notifications",
+    "payment",
 ]
 
 MIDDLEWARE = [
@@ -141,3 +142,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Authorize",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZE",
 }
+
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", "http://localhost:8000/")
+STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", "http://localhost:8000/")
