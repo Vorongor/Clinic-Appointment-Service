@@ -28,6 +28,11 @@ class DoctorSlotSerializer(serializers.ModelSerializer):
         fields = ["id", "doctor", "start", "end", "created_at"]
         read_only_fields = ["id", "created_at"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.context.get('nested_create'):
+            self.fields['doctor'].read_only = True
+
     def validate(self, data):
         start = data.get("start")
         end = data.get("end")

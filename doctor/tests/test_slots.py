@@ -2,6 +2,8 @@ from django.test import TestCase
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from rest_framework.test import APITestCase, APIClient
+from rest_framework import status
 
 from ..models import Doctor, DoctorSlot
 from ..serializers import DoctorSlotSerializer
@@ -75,3 +77,167 @@ class DoctorSlotTests(TestCase):
         )
         qs = list(DoctorSlot.objects.all())
         self.assertEqual(qs, [s2, s1])
+
+
+class DoctorSlotBulkCreateAPITests(APITestCase):
+    """
+    Tests for POST /api/doctors/<id>/slots/ endpoint.
+    Bulk create slots for a doctor.
+    """
+
+    def setUp(self):
+        User = get_user_model()
+        self.admin_user = User.objects.create_superuser(
+            email="admin@example.com",
+            password="adminpass"
+        )
+        self.doctor_user = User.objects.create_user(
+            email="doctor@example.com",
+            password="docpass"
+        )
+        self.doctor = Doctor.objects.create(
+            user=self.doctor_user,
+            first_name="Jane",
+            last_name="Smith",
+            price_per_visit=150
+        )
+        self.client = APIClient()
+        self.url = f"/api/doctors/{self.doctor.pk}/slots/"
+
+    def test_bulk_create_single_slot_as_list(self):
+        """POST with list containing one slot creates it successfully."""
+        self.client.force_authenticate(user=self.admin_user)
+        start = timezone.now()
+        end = start + timezone.timedelta(hours=1)
+        data = [
+            {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+            }
+        ]
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(response.data), 1)
+        response_start = response.data[0]["start"]
+        response_end = response.data[0]["end"]
+        self.assertTrue(response_start.startswith(start.isoformat()[:19]))
+        self.assertTrue(response_end.startswith(end.isoformat()[:19]))
+        self.assertEqual(DoctorSlot.objects.count(), 1)
+
+    def test_bulk_create_multiple_slots(self):
+        """POST with list of multiple slots creates all of them."""
+        self.client.force_authenticate(user=self.admin_user)
+        now = timezone.now()
+        data = [
+            {
+                "start": (now + timezone.timedelta(hours=0)).isoformat(),
+                "end": (now + timezone.timedelta(hours=1)).isoformat(),
+            },
+            {
+                "start": (now + timezone.timedelta(hours=2)).isoformat(),
+                "end": (now + timezone.timedelta(hours=3)).isoformat(),
+            },
+            {
+                "start": (now + timezone.timedelta(hours=4)).isoformat(),
+                "end": (now + timezone.timedelta(hours=5)).isoformat(),
+            },
+        ]
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(DoctorSlot.objects.count(), 3)
+        for slot in DoctorSlot.objects.all():
+            self.assertEqual(slot.doctor.id, self.doctor.id)
+
+    def test_bulk_create_rejects_non_list(self):
+        """POST with a single object (not list) returns 400."""
+        self.client.force_authenticate(user=self.admin_user)
+        start = timezone.now()
+        end = start + timezone.timedelta(hours=1)
+        data = {"start": start.isoformat(), "end": end.isoformat()}
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Expected a list", str(response.data))
+        self.assertEqual(DoctorSlot.objects.count(), 0)
+
+    def test_bulk_create_validation_error_invalid_time_range(self):
+        """POST with start >= end fails validation."""
+        self.client.force_authenticate(user=self.admin_user)
+        start = timezone.now()
+        end = start - timezone.timedelta(hours=1)
+        data = [
+            {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+            }
+        ]
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("start must be before end", str(response.data))
+        self.assertEqual(DoctorSlot.objects.count(), 0)
+
+    def test_bulk_create_partial_failure_stops_on_error(self):
+        """POST with invalid slot in list fails entire request."""
+        self.client.force_authenticate(user=self.admin_user)
+        now = timezone.now()
+        data = [
+            {
+                "start": (now + timezone.timedelta(hours=0)).isoformat(),
+                "end": (now + timezone.timedelta(hours=1)).isoformat(),
+            },
+            {
+                "start": (now + timezone.timedelta(hours=2)).isoformat(),
+                "end": (now + timezone.timedelta(hours=1)).isoformat(),
+            },
+        ]
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(DoctorSlot.objects.count(), 0)
+
+    def test_bulk_create_missing_required_fields(self):
+        """POST with missing 'start' or 'end' fails validation."""
+        self.client.force_authenticate(user=self.admin_user)
+        data = [
+            {
+                "start": timezone.now().isoformat(),
+            }
+        ]
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("end", str(response.data).lower())
+        self.assertEqual(DoctorSlot.objects.count(), 0)
+
+    def test_bulk_create_unauthenticated_denied(self):
+        """POST without authentication returns 401."""
+        start = timezone.now()
+        end = start + timezone.timedelta(hours=1)
+        data = [{"start": start.isoformat(), "end": end.isoformat()}]
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(DoctorSlot.objects.count(), 0)
+
+    def test_bulk_create_non_admin_denied(self):
+        """POST by non-admin user returns 403."""
+        self.client.force_authenticate(user=self.doctor_user)
+        start = timezone.now()
+        end = start + timezone.timedelta(hours=1)
+        data = [{"start": start.isoformat(), "end": end.isoformat()}]
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(DoctorSlot.objects.count(), 0)
+
+    def test_bulk_create_response_includes_ids_and_timestamps(self):
+        """POST response includes id, doctor, start, end, created_at."""
+        self.client.force_authenticate(user=self.admin_user)
+        start = timezone.now()
+        end = start + timezone.timedelta(hours=1)
+        data = [{"start": start.isoformat(), "end": end.isoformat()}]
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        slot_data = response.data[0]
+        self.assertIn("id", slot_data)
+        self.assertIn("doctor", slot_data)
+        self.assertIn("start", slot_data)
+        self.assertIn("end", slot_data)
+        self.assertIn("created_at", slot_data)
+        self.assertEqual(int(slot_data["doctor"]), self.doctor.id)

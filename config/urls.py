@@ -20,7 +20,7 @@ urlpatterns = [
         name="redoc",
     ),
     path("api/user/", include("user.urls", namespace="user")),
-    path("api/doctors/", include("doctor.urls")),
+    path("api/", include("doctor.urls")),
     path("api/appointments/", include("appointment.urls")),
     path("api/specializations/", include("specializations.urls")),
     path("api/payments/", include("payment.urls")),
