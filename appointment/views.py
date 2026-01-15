@@ -61,10 +61,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """
         Set user as patient, and set constant price
         """
+        user = self.request.user
         slot = serializer.validated_data["doctor_slot"]
+        patient = serializer.validated_data.get("patient", user)
 
         serializer.save(
-            patient=self.request.user,
+            patient=patient,
             price=slot.doctor.price_per_visit,
             booked_at=slot.start,
         )

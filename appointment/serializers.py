@@ -27,10 +27,22 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "price",
         )
 
+    def __init__(self, *args, **kwargs):
+        """
+        User CAN'T book appointment for another user,
+        this is available only for admins
+        """
+        super().__init__(*args, **kwargs)
+        user = self.context["request"].user
+        if user and user.is_staff:
+            self.fields["patient"].read_only = False
+
     def validate(self, attrs):
         """
         Complex validation - debt, slot, time
+        Users can book only for themselves
         """
+
         slot = attrs.get("doctor_slot")
         user = self.context["request"].user
 
