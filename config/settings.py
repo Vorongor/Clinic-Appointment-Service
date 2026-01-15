@@ -131,7 +131,7 @@ SPECTACULAR_SETTINGS = {
                    "processed via Stripe. Staff receive Telegram notifications "
                    "about new bookings, cancellations, no-shows, and "
                    "successful payments",
-    "VERSION": "1.0.0",
+    "VERSION": "1.0.1",
     "SERVE_INCLUDER_SCHEMA": False,
 }
 
