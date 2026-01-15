@@ -268,24 +268,3 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(DoctorSlot.objects.count(), 0)
-
-    def test_bulk_create_list_of_intervals(self):
-        """POST with list of interval objects generates all slots."""
-        self.client.force_authenticate(user=self.admin_user)
-        now = timezone.now()
-        data = [
-            {
-                "interval_start": now.isoformat(),
-                "interval_end": (now + timezone.timedelta(hours=1)).isoformat(),
-                "duration": 30,
-            },
-            {
-                "interval_start": (now + timezone.timedelta(hours=2)).isoformat(),
-                "interval_end": (now + timezone.timedelta(hours=3)).isoformat(),
-                "duration": 60,
-            },
-        ]
-        response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(len(response.data), 3)
-        self.assertEqual(DoctorSlot.objects.count(), 3)

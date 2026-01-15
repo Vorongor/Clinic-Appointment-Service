@@ -30,9 +30,6 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
     serializer_class = DoctorSlotIntervalSerializer
     permission_classes = [IsAdminOrReadOnly]
 
-    def get_serializer_class(self):
-        return DoctorSlotIntervalSerializer
-
     def get_queryset(self):
         doctor_id = self.kwargs["doctor_pk"]
         qs = DoctorSlot.objects.filter(doctor_id=doctor_id)
