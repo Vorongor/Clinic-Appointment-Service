@@ -33,9 +33,10 @@ INSTALLED_APPS = [
     "controller",
     "specializations",
     "doctor",
-    "appointment",
+    # "appointment",
     "notifications",
     "payment",
+    "appointment.apps.AppointmentConfig",
 ]
 
 MIDDLEWARE = [
@@ -133,6 +134,8 @@ SPECTACULAR_SETTINGS = {
                    "successful payments",
     "VERSION": "1.0.1",
     "SERVE_INCLUDER_SCHEMA": False,
+    "SERVE_PERMISSIONS": [],
+
 }
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
