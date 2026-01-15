@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from datetime import timedelta, datetime
+from datetime import timedelta
 
 from .models import Doctor, DoctorSlot
 from specializations.models import Specialization
