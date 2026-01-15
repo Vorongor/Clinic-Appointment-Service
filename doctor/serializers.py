@@ -26,7 +26,7 @@ class DoctorSlotSerializer(serializers.ModelSerializer):
     class Meta:
         model = DoctorSlot
         fields = ["id", "doctor", "start", "end", "created_at"]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "doctor", "created_at"]
 
     def validate(self, data):
         start = data.get("start")

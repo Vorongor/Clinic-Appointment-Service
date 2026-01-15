@@ -7,7 +7,7 @@ from .views import (
 )
 
 router = routers.DefaultRouter()
-router.register("doctors", DoctorViewSet, basename="doctor")
+router.register("", DoctorViewSet, basename="doctor")
 router.register("slots", DoctorSlotViewSet, basename="slot")
 
 doctor_router = routers.NestedDefaultRouter(router, "doctors", lookup="doctor")
