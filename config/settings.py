@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "specializations",
     "doctor",
     "appointment",
+    "notifications",
 ]
 
 MIDDLEWARE = [
