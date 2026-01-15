@@ -59,6 +59,15 @@ SECRET_KEY=@2qdi3!tvck7%!dhse^4k$9r+%ub@cr(55_%=d43y)f0g56c&7
 CELERY_BROKER_URL=redis://redis:6379
 CELERY_RESULT_BACKEND=redis://redis:6379
 ```
+### Authentication (JWT)
+To access protected endpoints (like `/api/user/patients/`), you must use a custom authorization header:
+
+- **Header Name**: `Authorize`
+- **Header Value**: `Authorize <your_token>`
+
+Example:
+`Authorize: Authorize eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+
 ## How to Run the Project (Docker)
 
 ### Prerequisites
