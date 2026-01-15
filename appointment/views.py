@@ -39,8 +39,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     search_fields = [
         "patient__first_name",
         "patient__last_name",
-        "doctor__first_name",
-        "doctor__last_name",
+        "doctor_slot__doctor__first_name",
+        "doctor_slot__doctor__last_name",
     ]
     filterset_class = AppointmentFilter
 
@@ -58,7 +58,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return Appointment.objects.filter(patient_id=user.id)
 
     def perform_create(self, serializer):
-        serializer.save(patient=self.request.user)
+        """
+        Set user as patient, and set constant price
+        """
+        slot = serializer.validated_data["doctor_slot"]
+
+        serializer.save(
+            patient=self.request.user,
+            price=slot.doctor.price_per_visit,
+            booked_at=slot.start,
+        )
 
     """
     Cancellation logic with validation and transaction
