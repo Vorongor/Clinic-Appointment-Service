@@ -80,11 +80,6 @@ class DoctorSlotTests(TestCase):
 
 
 class DoctorSlotBulkCreateAPITests(APITestCase):
-    """
-    Tests for POST /api/doctors/<id>/slots/ endpoint.
-    Bulk create slots for a doctor.
-    """
-
     def setUp(self):
         User = get_user_model()
         self.admin_user = User.objects.create_superuser(
@@ -148,17 +143,6 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         self.assertEqual(DoctorSlot.objects.count(), 3)
         for slot in DoctorSlot.objects.all():
             self.assertEqual(slot.doctor.id, self.doctor.id)
-
-    def test_bulk_create_rejects_non_list(self):
-        """POST with a single object (not list) returns 400."""
-        self.client.force_authenticate(user=self.admin_user)
-        start = timezone.now()
-        end = start + timezone.timedelta(hours=1)
-        data = {"start": start.isoformat(), "end": end.isoformat()}
-        response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Expected a list", str(response.data))
-        self.assertEqual(DoctorSlot.objects.count(), 0)
 
     def test_bulk_create_validation_error_invalid_time_range(self):
         """POST with start >= end fails validation."""
@@ -241,3 +225,46 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         self.assertIn("end", slot_data)
         self.assertIn("created_at", slot_data)
         self.assertEqual(int(slot_data["doctor"]), self.doctor.id)
+
+    def test_bulk_create_interval_invalid_duration(self):
+        """POST with non-positive duration fails."""
+        self.client.force_authenticate(user=self.admin_user)
+        start = timezone.now()
+        end = start + timezone.timedelta(hours=1)
+        data = {
+            "interval_start": start.isoformat(),
+            "interval_end": end.isoformat(),
+            "duration": 0,
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("positive", str(response.data).lower())
+        self.assertEqual(DoctorSlot.objects.count(), 0)
+
+    def test_bulk_create_interval_start_after_end(self):
+        """POST with interval_start >= interval_end fails."""
+        self.client.force_authenticate(user=self.admin_user)
+        end = timezone.now()
+        start = end + timezone.timedelta(hours=1)
+        data = {
+            "interval_start": start.isoformat(),
+            "interval_end": end.isoformat(),
+            "duration": 30,
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(DoctorSlot.objects.count(), 0)
+
+    def test_bulk_create_mixed_explicit_and_interval_fails(self):
+        """POST with both explicit (start/end) and interval params fails."""
+        self.client.force_authenticate(user=self.admin_user)
+        now = timezone.now()
+        data = {
+            "start": now.isoformat(),
+            "end": (now + timezone.timedelta(hours=1)).isoformat(),
+            "interval_start": now.isoformat(),
+            "duration": 30,
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(DoctorSlot.objects.count(), 0)
