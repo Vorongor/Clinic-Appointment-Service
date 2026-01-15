@@ -5,7 +5,12 @@ from django_filters.rest_framework import DjangoFilterBackend
 from user.permissions import IsAdminOrReadOnly
 
 from .models import Doctor, DoctorSlot
-from .serializers import DoctorSerializer, DoctorSlotSerializer
+from .serializers import (
+    DoctorSerializer,
+    DoctorSlotSerializer,
+    DoctorSlotDetailSerializer,
+    DoctorSlotIntervalSerializer
+)
 from appointment.models import Appointment
 
 
@@ -20,10 +25,13 @@ class DoctorViewSet(viewsets.ModelViewSet):
 class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
     """
     Nested viewset for /doctors/<doctor_id>/slots/
-    Supports GET list (with filters) and POST bulk-create.
+    Supports GET list (with filters) and POST bulk-create via intervals.
     """
-    serializer_class = DoctorSlotSerializer
+    serializer_class = DoctorSlotIntervalSerializer
     permission_classes = [IsAdminOrReadOnly]
+
+    def get_serializer_class(self):
+        return DoctorSlotIntervalSerializer
 
     def get_queryset(self):
         doctor_id = self.kwargs["doctor_pk"]
@@ -53,22 +61,44 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
         return Response(serializer.data)
 
     def create(self, request, doctor_pk=None):
+        """
+        POST /doctors/<id>/slots/
+
+        Accepts list of explicit slots or
+        interval-based generation
+        """
         data = request.data
-        if not isinstance(data, list):
+        slots = []
+        
+        if isinstance(data, list):
+            for slot_data in data:
+                slot_copy = dict(slot_data)
+                if "start_time" in slot_copy:
+                    slot_copy["start"] = slot_copy.pop("start_time")
+                if "end_time" in slot_copy:
+                    slot_copy["end"] = slot_copy.pop("end_time")
+                
+                serializer = DoctorSlotSerializer(data=slot_copy, context={"nested_create": True})
+                serializer.is_valid(raise_exception=True)
+                slots.append((serializer.validated_data["start"], serializer.validated_data["end"]))
+        
+        elif isinstance(data, dict):
+            interval_ser = DoctorSlotIntervalSerializer(data=data)
+            interval_ser.is_valid(raise_exception=True)
+            slots = interval_ser.generate_slots()
+        
+        else:
             return Response(
-                {"detail": "Expected a list of slots"},
+                {"detail": "Expected a list of slots or an interval object"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        serializer = DoctorSlotSerializer(data=data, many=True, context={'nested_create': True})
-        serializer.is_valid(raise_exception=True)
-
+        
         created = []
-        for item in serializer.validated_data:
+        for start, end in slots:
             slot = DoctorSlot.objects.create(
                 doctor_id=doctor_pk,
-                start=item["start"],
-                end=item["end"]
+                start=start,
+                end=end
             )
             created.append(slot)
 
@@ -88,6 +118,12 @@ class DoctorSlotViewSet(
     queryset = DoctorSlot.objects.all()
     serializer_class = DoctorSlotSerializer
     permission_classes = [IsAdminOrReadOnly]
+
+    def get_serializer_class(self):
+        """Use detail serializer for retrieve action."""
+        if self.action == "retrieve":
+            return DoctorSlotDetailSerializer
+        return DoctorSlotSerializer
 
     def destroy(self, request, pk=None):
         slot = self.get_object()
