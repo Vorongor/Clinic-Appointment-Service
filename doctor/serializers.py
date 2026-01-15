@@ -15,7 +15,6 @@ class DoctorSerializer(serializers.ModelSerializer):
         model = Doctor
         fields = [
             "id",
-            "user",
             "first_name",
             "last_name",
             "specializations",

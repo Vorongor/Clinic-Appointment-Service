@@ -4,10 +4,6 @@ from specializations.models import Specialization
 
 
 class Doctor(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE
-    )
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     specializations = models.ManyToManyField(
