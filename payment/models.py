@@ -17,7 +17,7 @@ class Payment(models.Model):
         choices=Status.choices,
         default=Status.PENDING,
     )
-    type = models.CharField(max_length=20, choices=Type.choices)
+    payment_type = models.CharField(max_length=20, choices=Type.choices)
 
     appointment = models.ForeignKey(
         "appointment.Appointment",
@@ -35,4 +35,4 @@ class Payment(models.Model):
         ordering = ("-created_at",)
 
     def __str__(self) -> str:
-        return f"Payment #{self.id} | {self.type} | {self.status} | appt #{self.appointment_id}"
+        return f"Payment #{self.id} | {self.payment_type} | {self.status} | appt #{self.appointment_id}"
