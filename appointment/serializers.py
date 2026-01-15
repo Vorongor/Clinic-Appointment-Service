@@ -69,5 +69,5 @@ class AppointmentDetailSerializer(AppointmentSerializer):
 
 
 class AppointmentListSerializer(AppointmentSerializer):
-    doctor = serializers.StringRelatedField(read_only=True)
+    doctor_slot = serializers.StringRelatedField(read_only=True)
     patient = serializers.StringRelatedField(read_only=True)
