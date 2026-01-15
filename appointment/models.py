@@ -21,14 +21,17 @@ class Appointment(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="appointments"
     )
     status = models.CharField(
-        max_length=10, choices=Status.choices, default=Status.BOOKED
+        max_length=15, choices=Status.choices, default=Status.BOOKED
     )
     booked_at = models.DateTimeField()
     completed_at = models.DateTimeField(null=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=8, decimal_places=2, editable=False)
 
     def __str__(self):
-        return f"Appointment #{self.id} | Doctor - {self.doctor} | Patient - {self.patient.last_name} | {self.status}"
+        return (
+            f"Appointment #{self.id} | Doctor - {self.doctor} | "
+            f"Patient - {self.patient.last_name} | {self.status}"
+        )
 
     class Meta:
         """

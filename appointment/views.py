@@ -58,7 +58,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return Appointment.objects.filter(patient_id=user.id)
 
     def perform_create(self, serializer):
-        serializer.save(patient=self.request.user)
+        """
+        Set user as patient, and set constant price
+        """
+        doctor = serializer.validated_data["doctor"]
+        current_price = doctor.price_per_visit
+        serializer.save(patient=self.request.user, price=current_price)
 
     """
     Cancellation logic with validation and transaction
