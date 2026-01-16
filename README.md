@@ -59,9 +59,6 @@ SECRET_KEY=@2qdi3!tvck7%!dhse^4k$9r+%ub@cr(55_%=d43y)f0g56c&7
 CELERY_BROKER_URL=redis://redis:6379
 CELERY_RESULT_BACKEND=redis://redis:6379
 
-STRIPE_SECRET_KEY=
-STRIPE_SUCCESS_URL=http://127.0.0.1:/api/payment/success/?session_id={CHECKOUT_SESSION_ID}
-STRIPE_CANCEL_URL=http://127.0.0.1:/api/payment/cancel/
 ```
 ### Authentication (JWT)
 To access protected endpoints (like `/api/user/patients/`), you must use a custom authorization header:
