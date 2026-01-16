@@ -8,6 +8,6 @@ router = DefaultRouter()
 router.register("", PaymentViewSet, basename="payment")
 
 urlpatterns = [
-    path("", include(router.urls)),
     path("webhook/", StripeWebhookView.as_view(), name="stripe-webhook"),
+    path("", include(router.urls)),
 ]

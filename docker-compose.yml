@@ -64,7 +64,7 @@ services:
     image: stripe/stripe-cli
     command: >
       listen --api-key ${STRIPE_SECRET_KEY} 
-      --forward-to nginx:80/api/payments/webhook/
+      --forward-to localhost:80/api/payments/webhook/
     env_file: [ .env ]
     depends_on:
       - nginx
