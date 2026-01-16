@@ -11,12 +11,7 @@ from ..serializers import DoctorSlotSerializer
 
 class DoctorSlotTests(TestCase):
     def setUp(self):
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email="doc@example.com", password="pass"
-        )
         self.doctor = Doctor.objects.create(
-            user=self.user,
             first_name="John",
             last_name="Doe",
             price_per_visit=100
@@ -86,12 +81,7 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
             email="admin@example.com",
             password="adminpass"
         )
-        self.doctor_user = User.objects.create_user(
-            email="doctor@example.com",
-            password="docpass"
-        )
         self.doctor = Doctor.objects.create(
-            user=self.doctor_user,
             first_name="Jane",
             last_name="Smith",
             price_per_visit=150
@@ -202,7 +192,12 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
 
     def test_bulk_create_non_admin_denied(self):
         """POST by non-admin user returns 403."""
-        self.client.force_authenticate(user=self.doctor_user)
+        User = get_user_model()
+        non_admin_user = User.objects.create_user(
+            email="user@example.com",
+            password="userpass"
+        )
+        self.client.force_authenticate(user=non_admin_user)
         start = timezone.now()
         end = start + timezone.timedelta(hours=1)
         data = [{"start": start.isoformat(), "end": end.isoformat()}]
@@ -268,3 +263,39 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(DoctorSlot.objects.count(), 0)
+
+    def test_list_overlapping_slots_invalid(self):
+        data = [
+            {
+                "doctor": self.doctor.pk,
+                "start": "2011-02-01T09:00:00Z",
+                "end": "2011-02-05T09:30:00Z",
+            },
+            {
+                "doctor": self.doctor.pk,
+                "start": "2011-02-02T09:00:00Z",
+                "end": "2011-02-06T09:30:00Z",
+            },
+        ]
+
+        serializer = DoctorSlotSerializer(data=data, many=True)
+        valid = serializer.is_valid()
+        self.assertFalse(valid)
+        self.assertIn("overlap", str(serializer.errors).lower())
+
+    def test_list_non_overlapping_slots_valid(self):
+        data = [
+            {
+                "doctor": self.doctor.pk,
+                "start": "2011-02-01T09:00:00Z",
+                "end": "2011-02-01T09:30:00Z",
+            },
+            {
+                "doctor": self.doctor.pk,
+                "start": "2011-02-01T09:30:00Z",
+                "end": "2011-02-01T10:00:00Z",
+            },
+        ]
+
+        serializer = DoctorSlotSerializer(data=data, many=True)
+        self.assertTrue(serializer.is_valid(), serializer.errors)

@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status, mixins
 from rest_framework.response import Response
-from django.db.models import Count, Q
+from django.db.models import Exists, OuterRef
 from django_filters.rest_framework import DjangoFilterBackend
 from user.permissions import IsAdminOrReadOnly
 
@@ -43,12 +43,14 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
 
         available_only = self.request.query_params.get("available_only")
         if available_only in ["true", "True", "1"]:
-            qs = qs.annotate(
-                booked_count=Count(
-                    "appointments",
-                    filter=Q(appointments__status=Appointment.Status.BOOKED)
+            qs = qs.filter(
+                ~Exists(
+                    Appointment.objects.filter(
+                        doctor_slot=OuterRef('pk'),
+                        status=Appointment.Status.BOOKED
+                    )
                 )
-            ).filter(booked_count=0)
+            )
 
         return qs
 
@@ -66,30 +68,32 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
         """
         data = request.data
         slots = []
-        
+
         if isinstance(data, list):
+            normalized = []
             for slot_data in data:
                 slot_copy = dict(slot_data)
                 if "start_time" in slot_copy:
                     slot_copy["start"] = slot_copy.pop("start_time")
                 if "end_time" in slot_copy:
                     slot_copy["end"] = slot_copy.pop("end_time")
-                
-                serializer = DoctorSlotSerializer(data=slot_copy, context={"nested_create": True})
-                serializer.is_valid(raise_exception=True)
-                slots.append((serializer.validated_data["start"], serializer.validated_data["end"]))
-        
+                normalized.append(slot_copy)
+
+            serializer = DoctorSlotSerializer(data=normalized, many=True, context={"nested_create": True})
+            serializer.is_valid(raise_exception=True)
+            slots = [(d["start"], d["end"]) for d in serializer.validated_data]
+
         elif isinstance(data, dict):
             interval_ser = DoctorSlotIntervalSerializer(data=data)
             interval_ser.is_valid(raise_exception=True)
             slots = interval_ser.generate_slots()
-        
+
         else:
             return Response(
                 {"detail": "Expected a list of slots or an interval object"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         created = []
         for start, end in slots:
             slot = DoctorSlot.objects.create(
