@@ -11,6 +11,7 @@ from .serializers import (
     DoctorSlotDetailSerializer,
     DoctorSlotIntervalSerializer
 )
+from .filters import DoctorFilter, DoctorSlotFilter
 from appointment.models import Appointment
 
 
@@ -18,7 +19,7 @@ class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["specializations"]
+    filterset_class = DoctorFilter
     permission_classes = [IsAdminOrReadOnly]
 
 
@@ -28,34 +29,18 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
     Supports GET list (with filters) and POST bulk-create via intervals.
     """
     serializer_class = DoctorSlotIntervalSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = DoctorSlotFilter
     permission_classes = [IsAdminOrReadOnly]
 
     def get_queryset(self):
         doctor_id = self.kwargs["doctor_pk"]
-        qs = DoctorSlot.objects.filter(doctor_id=doctor_id)
-
-        from_param = self.request.query_params.get("from")
-        to_param = self.request.query_params.get("to")
-        if from_param:
-            qs = qs.filter(start__gte=from_param)
-        if to_param:
-            qs = qs.filter(end__lte=to_param)
-
-        available_only = self.request.query_params.get("available_only")
-        if available_only in ["true", "True", "1"]:
-            qs = qs.filter(
-                ~Exists(
-                    Appointment.objects.filter(
-                        doctor_slot=OuterRef('pk'),
-                        status=Appointment.Status.BOOKED
-                    )
-                )
-            )
-
-        return qs
+        return DoctorSlot.objects.filter(doctor_id=doctor_id)
 
     def list(self, request, doctor_pk=None):
         qs = self.get_queryset()
+        filterset = self.filterset_class(request.GET, queryset=qs)
+        qs = filterset.qs
         serializer = DoctorSlotSerializer(qs, many=True)
         return Response(serializer.data)
 
