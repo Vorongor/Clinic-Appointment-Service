@@ -69,7 +69,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer.save(
             patient=patient,
             booked_at=slot.start,
-            price=slot.doctor.price_per_visit,
         )
 
     """
@@ -115,7 +114,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 examples=[
                     OpenApiExample(
                         "Database error",
-                        value={"error": "Transaction failed: Database connection lost"},
+                        value={"error": "Database connection lost"},
                     )
                 ],
             ),
@@ -144,25 +143,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment.save()
 
             if time_until_appointment < timedelta(hours=24):
-                payment = appointment.payments.filter(
-                    payment_type=Payment.Type.CANCELLATION_FEE,
-                    status=Payment.Status.PENDING,
-                ).first()
-
-                if not payment:
-                    pass
-
-                return Response(
-                    {
-                        "status": "Appointment cancelled",
-                        "payment_url": payment.session_url,
-                        "payment_id": payment.id,
-                    }
-                )
+                pass
 
         except Exception as e:
             return Response(
-                {"error": f"Status is CANCELLED, but payment failed: {str(e)}"},
+                {"error": f"Data base error: {str(e)}"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -225,10 +210,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def completed_appointment(self, request, pk=None):
         appointment = self.get_object()
 
-        if appointment.status not in [
-            appointment.Status.BOOKED,
-            appointment.Status.COMPLETED,
-        ]:
+        if appointment.status != appointment.Status.BOOKED:
             return Response(
                 {
                     "error": f"Cannot complete appointment from status: {appointment.status}"
@@ -243,24 +225,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     appointment.completed_at = timezone.now()
                     appointment.save()
 
-            payment = appointment.payments.filter(
-                payment_type=Payment.Type.CONSULTATION, status=Payment.Status.PENDING
-            ).first()
-
-            if not payment:
-                pass
-
-            return Response(
-                {
-                    "status": "Appointment completed",
-                    "payment_url": payment.session_url,
-                    "payment_id": payment.id,
-                }
-            )
-
         except Exception as e:
             return Response(
-                {"error": f"Status is NO SHOW, but payment failed: {str(e)}"},
+                {"error": f"Data base error: {str(e)}"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -343,31 +310,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            if appointment.status == appointment.Status.BOOKED:
-                with transaction.atomic():
-                    appointment.status = appointment.Status.NO_SHOW
-                    appointment.save()
-
-            payment = appointment.payments.filter(
-                payment_type=Payment.Type.NO_SHOW_FEE, status=Payment.Status.PENDING
-            ).first()
-
-            if not payment:
-                pass
-
-            return Response(
-                {
-                    "status": "Appointment marked as no show",
-                    "payment_url": payment.session_url,
-                    "payment_id": payment.id,
-                }
-            )
+            with transaction.atomic():
+                appointment.status = appointment.Status.NO_SHOW
+                appointment.save()
 
         except Exception as e:
             return Response(
-                {"error": f"Status is NO SHOW, but payment failed: {str(e)}"},
+                {"error": f"Data base error: {str(e)}"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-
-    def _create_payment(self, appointment, payment_type):
-        pass
