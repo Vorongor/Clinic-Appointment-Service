@@ -22,11 +22,31 @@ class DoctorSerializer(serializers.ModelSerializer):
         ]
 
 
+class DoctorSlotListSerializer(serializers.ListSerializer):
+    def validate(self, data):
+        slots = []
+        for item in data:
+            start = item.get("start")
+            end = item.get("end")
+            if start and end:
+                slots.append((start, end))
+
+        for i, (start1, end1) in enumerate(slots):
+            for j, (start2, end2) in enumerate(slots): # noqa VNE001
+                if i != j and start1 < end2 and start2 < end1:
+                    raise serializers.ValidationError(
+                        "Slots in the list overlap with each other."
+                    )
+
+        return data
+
+
 class DoctorSlotSerializer(serializers.ModelSerializer):
     class Meta:
         model = DoctorSlot
         fields = ["id", "doctor", "start", "end", "created_at"]
         read_only_fields = ["id", "created_at"]
+        list_serializer_class = DoctorSlotListSerializer
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,6 +58,20 @@ class DoctorSlotSerializer(serializers.ModelSerializer):
         end = data.get("end")
         if start and end and start >= end:
             raise serializers.ValidationError("start must be before end")
+
+        doctor = data.get("doctor") or \
+            (self.instance.doctor if self.instance else None)
+        if doctor and start and end:
+            overlapping = DoctorSlot.objects.filter(
+                doctor=doctor,
+                start__lt=end,
+                end__gt=start
+            ).exclude(pk=self.instance.pk if self.instance else None)
+            if overlapping.exists():
+                raise serializers.ValidationError(
+                    "This slot overlaps with an existing slot for the doctor."
+                )
+
         return data
 
 
@@ -71,15 +105,15 @@ class DoctorSlotIntervalSerializer(serializers.Serializer):
         interval_start = data.get("interval_start")
         interval_end = data.get("interval_end")
         duration = data.get("duration")
-        
+
         if interval_start >= interval_end:
             raise serializers.ValidationError(
                 "interval_start must be before interval_end"
             )
-        
+
         if duration <= 0:
             raise serializers.ValidationError(
-               "duration must be positive (in minutes)" 
+                "duration must be positive (in minutes)"
             )
 
         return data
