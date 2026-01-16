@@ -53,10 +53,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         User can only see own appointments.
         Staff can see all appointments.
         """
+        query = (
+            Appointment.objects.all()
+            .select_related("patient", "doctor_slot")
+            .prefetch_related("payments")
+        )
         user = self.request.user
         if user.is_staff:
-            return Appointment.objects.all()
-        return Appointment.objects.filter(patient_id=user.id)
+            return query
+        return query.filter(patient_id=user.id)
 
     def perform_create(self, serializer):
         """
@@ -68,7 +73,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer.save(
             patient=patient,
         )
-        #TODO trigger sed booked
+        # TODO trigger sed booked
 
     """
     Cancellation logic with validation and transaction
