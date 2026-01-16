@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from django.db.models import Exists, OuterRef
 from django_filters.rest_framework import DjangoFilterBackend
 from user.permissions import IsAdminOrReadOnly
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from .models import Doctor, DoctorSlot
 from .serializers import (
@@ -22,6 +23,16 @@ class DoctorViewSet(viewsets.ModelViewSet):
     filterset_class = DoctorFilter
     permission_classes = [IsAdminOrReadOnly]
 
+    @extend_schema(
+        summary="List doctors",
+        description="Retrieve a list of doctors. Filter by specialization name using the 'specializations' query parameter.",
+        parameters=[
+            OpenApiParameter(name='specializations', type=OpenApiTypes.STR, description='Filter doctors by specialization name (icontains)'),
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
 
 class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
     """
@@ -37,6 +48,15 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
         doctor_id = self.kwargs["doctor_pk"]
         return DoctorSlot.objects.filter(doctor_id=doctor_id)
 
+    @extend_schema(
+        summary="List doctor slots",
+        description="Retrieve slots for a specific doctor, with optional filters for date range and availability.",
+        parameters=[
+            OpenApiParameter(name='from_date', type=OpenApiTypes.DATETIME, description='Filter slots starting on or after this date'),
+            OpenApiParameter(name='to_date', type=OpenApiTypes.DATETIME, description='Filter slots ending on or before this date'),
+            OpenApiParameter(name='available_only', type=OpenApiTypes.STR, enum=['True', 'False'], description='If True, show only slots without booked appointments'),
+        ],
+    )
     def list(self, request, doctor_pk=None):
         qs = self.get_queryset()
         filterset = self.filterset_class(request.GET, queryset=qs)
@@ -44,6 +64,37 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
         serializer = DoctorSlotSerializer(qs, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Create doctor slots",
+        description="Create multiple slots for a doctor. Accepts either a list of slot objects or an interval object to generate slots.",
+        request={
+            'application/json': {
+                'oneOf': [
+                    {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'start': {'type': 'string', 'format': 'date-time'},
+                                'end': {'type': 'string', 'format': 'date-time'},
+                            },
+                        },
+                    },
+                    {
+                        'type': 'object',
+                        'properties': {
+                            'interval_start': {'type': 'string', 'format': 'date-time'},
+                            'interval_end': {'type': 'string', 'format': 'date-time'},
+                            'duration': {'type': 'integer'},
+                        },
+                    },
+                ],
+            },
+        },
+        responses={
+            201: DoctorSlotSerializer(many=True),
+        },
+    )
     def create(self, request, doctor_pk=None):
         """
         POST /doctors/<id>/slots/
@@ -115,6 +166,14 @@ class DoctorSlotViewSet(
             return DoctorSlotDetailSerializer
         return DoctorSlotSerializer
 
+    @extend_schema(
+        summary="Delete a doctor slot",
+        description="Delete a slot if it has no associated appointments.",
+        responses={
+            204: None,
+            400: {'description': 'Cannot delete slot with existing appointments'},
+        },
+    )
     def destroy(self, request, pk=None):
         slot = self.get_object()
         if slot.appointments.exists():
