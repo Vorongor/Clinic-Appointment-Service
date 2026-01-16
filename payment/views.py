@@ -1,3 +1,10 @@
+import stripe
+from django.conf import settings
+from django.http import HttpResponse
+from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 import stripe
 
@@ -19,7 +26,10 @@ class PaymentViewSet(ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Payment.objects.select_related("appointment", "appointment__patient")
+        qs = Payment.objects.select_related(
+            "appointment",
+            "appointment__patient"
+        )
 
         if user.is_staff:
             return qs
@@ -108,3 +118,44 @@ class PaymentViewSet(ReadOnlyModelViewSet):
             {"detail": "Payment was cancelled/paused. You can try again later."},
             status=status.HTTP_200_OK,
         )
+
+
+class StripeWebhookView(APIView):
+    permission_classes = []
+
+    @csrf_exempt
+    def post(self, request, *args, **kwargs):
+        print("!!! WEBHOOK RECEIVED !!!")
+        payload = request.body
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+        endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
+        event = None
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, endpoint_secret
+            )
+        except stripe.error.SignatureVerificationError as e:
+            print(
+                f"!!! Signature verification failed: {e}")
+            return HttpResponse(content="Invalid signature", status=400)
+        except ValueError as e:
+            print(f"!!! Invalid payload: {e}")
+            return HttpResponse(content="Invalid payload", status=400)
+
+        # Обробляємо успішну оплату
+        if event['type'] == 'checkout.session.completed':
+            session = event['data']['object']
+
+            payment = Payment.objects.filter(session_id=session.id).first()
+            if payment:
+                payment.status = Payment.Status.PAID
+                payment.save()
+
+
+                # TODO Send notification payment success
+                appointment = payment.appointment
+                appointment.status = "BOOKED"
+                appointment.save()
+
+        return HttpResponse(status=200)

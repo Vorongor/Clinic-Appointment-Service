@@ -60,6 +60,15 @@ services:
       web: {condition: service_started}
     env_file: [.env]
 
+  stripe:
+    image: stripe/stripe-cli
+    command: >
+      listen --api-key ${STRIPE_SECRET_KEY} 
+      --forward-to nginx:80/api/payments/webhook/
+    env_file: [ .env ]
+    depends_on:
+      - nginx
+
 volumes:
   static_volume:
   media_volume:
