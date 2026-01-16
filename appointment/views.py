@@ -18,7 +18,6 @@ from appointment.serializers import (
     AppointmentDetailSerializer,
 )
 from payment.models import Payment
-from payment.services.stripe_checkout import create_stripe_session
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -151,9 +150,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 ).first()
 
                 if not payment:
-                    payment = create_stripe_session(
-                        appointment, Payment.Type.CANCELLATION_FEE
-                    )
+                    pass
 
                 return Response(
                     {
@@ -251,7 +248,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             ).first()
 
             if not payment:
-                payment = create_stripe_session(appointment, Payment.Type.CONSULTATION)
+                pass
 
             return Response(
                 {
@@ -356,7 +353,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             ).first()
 
             if not payment:
-                payment = create_stripe_session(appointment, Payment.Type.NO_SHOW_FEE)
+                pass
 
             return Response(
                 {

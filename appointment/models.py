@@ -25,13 +25,15 @@ class Appointment(models.Model):
     status = models.CharField(
         max_length=15, choices=Status.choices, default=Status.BOOKED
     )
-    booked_at = models.DateTimeField(null=True)
-    completed_at = models.DateTimeField(null=True)
-    price = models.DecimalField(max_digits=8, decimal_places=2, editable=False)
+    booked_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    price = models.DecimalField(
+        max_digits=8, decimal_places=2, editable=False, null=True, blank=True
+    )
 
     def __str__(self):
         return (
-            f"Appointment #{self.id} | Doctor - {self.doctor} | "
+            f"Appointment #{self.id} | Doctor - {self.doctor_slot.doctor} | "
             f"Patient - {self.patient.last_name} | {self.status}"
         )
 
