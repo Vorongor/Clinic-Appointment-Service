@@ -5,22 +5,35 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView,
 )
+from rest_framework.permissions import AllowAny
+
+from controller.views import SpectacularSwaggerViewUP
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/schema/",
+        SpectacularAPIView.as_view(permission_classes=[AllowAny]),
+        name="schema"
+    ),
     path(
         "api/schema/swagger-ui/",
-        SpectacularSwaggerView.as_view(url_name="schema"),
+        SpectacularSwaggerView.as_view(
+            permission_classes=[AllowAny],
+            url_name="schema"
+        ),
         name="swagger-ui",
     ),
     path(
         "api/schema/redoc/",
-        SpectacularRedocView.as_view(url_name="schema"),
+        SpectacularRedocView.as_view(
+            permission_classes=[AllowAny],
+            url_name="schema"
+        ),
         name="redoc",
     ),
     path("api/user/", include("user.urls", namespace="user")),
-    path("api/", include("doctor.urls")),
+    path("api/doctors/", include("doctor.urls")),
     path("api/appointments/", include("appointment.urls")),
     path("api/specializations/", include("specializations.urls")),
     path("api/payments/", include("payment.urls")),

@@ -39,4 +39,5 @@ class Payment(models.Model):
         ordering = ("-created_at",)
 
     def __str__(self) -> str:
-        return f"Payment #{self.id} | {self.payment_type} | {self.status} | appt #{self.appointment_id}"
+        return (f"Payment #{self.id} | {self.payment_type} | {self.status} "
+                f"| appt #{self.appointment_id}")

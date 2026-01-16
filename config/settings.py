@@ -15,7 +15,8 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "web"
+    "web",
+    "nginx",
 ]
 
 INSTALLED_APPS = [
@@ -33,9 +34,10 @@ INSTALLED_APPS = [
     "controller",
     "specializations",
     "doctor",
-    "appointment",
+    # "appointment",
     "notifications",
     "payment",
+    "appointment.apps.AppointmentConfig",
 ]
 
 MIDDLEWARE = [
@@ -133,6 +135,8 @@ SPECTACULAR_SETTINGS = {
                    "successful payments",
     "VERSION": "1.0.1",
     "SERVE_INCLUDER_SCHEMA": False,
+    "SERVE_PERMISSIONS": [],
+
 }
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
@@ -162,3 +166,17 @@ SIMPLE_JWT = {
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", "http://127.0.0.1/")
 STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", "http://127.0.0.1/")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+LOGGING = {
+    'version': 1,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG',
+    },
+}
