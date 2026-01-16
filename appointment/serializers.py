@@ -53,7 +53,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         """
 
         slot = attrs.get("doctor_slot")
-        user = self.context["request"].user
+        # user = self.context["request"].user
 
         if slot.start < timezone.now():
             raise serializers.ValidationError(
@@ -68,7 +68,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         if is_taken:
             raise serializers.ValidationError(
-                {"doctor_slot": "This slot is already booked by another patient."}
+                {"doctor_slot": "This slot is already " "booked by another patient."}
             )
 
         # has_debt = Payment.objects.filter(
@@ -78,7 +78,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
         #
         # if has_debt:
         #     raise serializers.ValidationError(
-        #         "You have unpaid penalties. Booking is blocked until payment."
+        #         "You have unpaid penalties.
+        #         Booking is blocked until payment."
         #     )
         #
         return attrs
