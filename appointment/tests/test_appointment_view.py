@@ -27,12 +27,8 @@ class AppointmentCreateAPITests(APITestCase):
         self.admin_user = User.objects.create_superuser(
             email="admin@example.com", password="adminpass"
         )
-        self.doctor_user = User.objects.create_user(
-            email="doc@example.com", password="docpass"
-        )
 
         self.doctor = Doctor.objects.create(
-            user=self.doctor_user,
             first_name="Gregory",
             last_name="House",
             price_per_visit=500.00,

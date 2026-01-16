@@ -37,6 +37,15 @@ class Appointment(models.Model):
             f"Patient - {self.patient.last_name} | {self.status}"
         )
 
+    def save(self, *args, **kwargs):
+        if self.doctor_slot:
+            if not self.price:
+                self.price = self.doctor_slot.doctor.price_per_visit
+            if not self.booked_at:
+                self.booked_at = self.doctor_slot.start
+
+        super().save(*args, **kwargs)
+
     class Meta:
         """
         Ordered by last bookings
