@@ -17,6 +17,7 @@ from appointment.serializers import (
     AppointmentListSerializer,
     AppointmentDetailSerializer,
 )
+from payment.models import Payment
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -109,7 +110,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     ),
                 ],
             ),
-            500: OpenApiResponse(
+            503: OpenApiResponse(
                 description="Transaction failed / Server error",
                 examples=[
                     OpenApiExample(
@@ -142,15 +143,27 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment.status = appointment.Status.CANCELLED
                 appointment.save()
 
-                if time_until_appointment < timedelta(hours=24):
-                    self._create_payment(appointment, payment_type="CANCELLATION_FEE")
+            if time_until_appointment < timedelta(hours=24):
+                payment = appointment.payments.filter(
+                    payment_type=Payment.Type.CANCELLATION_FEE,
+                    status=Payment.Status.PENDING,
+                ).first()
 
-            return Response({"status": "Appointment cancelled successfully"})
+                if not payment:
+                    pass
+
+                return Response(
+                    {
+                        "status": "Appointment cancelled",
+                        "payment_url": payment.session_url,
+                        "payment_id": payment.id,
+                    }
+                )
 
         except Exception as e:
             return Response(
-                {"error": f"Transaction failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"error": f"Status is CANCELLED, but payment failed: {str(e)}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
     """
@@ -191,8 +204,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 ],
             ),
             403: OpenApiResponse(description="Permission Denied (Admin only)"),
-            500: OpenApiResponse(
-                description="Transaction failed / Server error",
+            503: OpenApiResponse(
+                description="Server error / Service unavailable / Stripe error",
                 examples=[
                     OpenApiExample(
                         "Database error",
@@ -212,28 +225,43 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def completed_appointment(self, request, pk=None):
         appointment = self.get_object()
 
-        if appointment.status != appointment.Status.BOOKED:
+        if appointment.status not in [
+            appointment.Status.BOOKED,
+            appointment.Status.COMPLETED,
+        ]:
             return Response(
                 {
-                    "error": f"Cannot complete appointment with status: {appointment.status}"
+                    "error": f"Cannot complete appointment from status: {appointment.status}"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            with transaction.atomic():
-                appointment.status = appointment.Status.COMPLETED
-                appointment.completed_at = timezone.now()
-                appointment.save()
+            if appointment.status == appointment.Status.BOOKED:
+                with transaction.atomic():
+                    appointment.status = appointment.Status.COMPLETED
+                    appointment.completed_at = timezone.now()
+                    appointment.save()
 
-                self._create_payment(appointment, payment_type="CONSULTATION")
+            payment = appointment.payments.filter(
+                payment_type=Payment.Type.CONSULTATION, status=Payment.Status.PENDING
+            ).first()
 
-            return Response({"status": "Appointment completed and payment created."})
+            if not payment:
+                pass
+
+            return Response(
+                {
+                    "status": "Appointment completed",
+                    "payment_url": payment.session_url,
+                    "payment_id": payment.id,
+                }
+            )
 
         except Exception as e:
             return Response(
-                {"error": f"Transaction failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"error": f"Status is NO SHOW, but payment failed: {str(e)}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
     """
@@ -279,7 +307,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 ],
             ),
             403: OpenApiResponse(description="Permission Denied (Admin only)"),
-            500: OpenApiResponse(
+            503: OpenApiResponse(
                 description="Transaction failed / Server error",
                 examples=[
                     OpenApiExample(
@@ -315,22 +343,30 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            with transaction.atomic():
-                self._create_payment(appointment, payment_type="NO_SHOW_FEE")
-                appointment.status = appointment.Status.NO_SHOW
-                appointment.save()
+            if appointment.status == appointment.Status.BOOKED:
+                with transaction.atomic():
+                    appointment.status = appointment.Status.NO_SHOW
+                    appointment.save()
+
+            payment = appointment.payments.filter(
+                payment_type=Payment.Type.NO_SHOW_FEE, status=Payment.Status.PENDING
+            ).first()
+
+            if not payment:
+                pass
 
             return Response(
                 {
-                    "status": "Success",
-                    "message": "Appointment marked as 'No Show'. 120% penalty fee applied.",
+                    "status": "Appointment marked as no show",
+                    "payment_url": payment.session_url,
+                    "payment_id": payment.id,
                 }
             )
 
         except Exception as e:
             return Response(
-                {"error": f"Transaction failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"error": f"Status is NO SHOW, but payment failed: {str(e)}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
     def _create_payment(self, appointment, payment_type):
