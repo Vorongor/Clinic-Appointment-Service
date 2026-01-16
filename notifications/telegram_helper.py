@@ -1,7 +1,6 @@
 import os
 
 import telebot
-from django.conf import settings
 
 
 def send_telegram_message(text: str):
