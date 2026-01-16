@@ -38,8 +38,11 @@ class Appointment(models.Model):
         )
 
     def save(self, *args, **kwargs):
-        if self.price is None and self.doctor_slot and self.doctor_slot.doctor:
-            self.price = self.doctor_slot.doctor.price_per_visit
+        if self.doctor_slot:
+            if not self.price:
+                self.price = self.doctor_slot.doctor.price_per_visit
+            if not self.booked_at:
+                self.booked_at = self.doctor_slot.start
 
         super().save(*args, **kwargs)
 
