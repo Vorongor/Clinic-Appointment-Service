@@ -143,12 +143,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         try:
             with transaction.atomic():
-                time_until_appointment = appointment.booked_at - timezone.now()
                 appointment.status = appointment.Status.CANCELLED
                 appointment.save()
 
-            if time_until_appointment < timedelta(hours=24):
-                pass
+            return Response(
+                {"message": "Appointment cancelled"}, status=status.HTTP_200_OK
+            )
 
         except Exception as e:
             return Response(
@@ -226,11 +226,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            if appointment.status == appointment.Status.BOOKED:
-                with transaction.atomic():
-                    appointment.status = appointment.Status.COMPLETED
-                    appointment.completed_at = timezone.now()
-                    appointment.save()
+            with transaction.atomic():
+                appointment.status = appointment.Status.COMPLETED
+                appointment.completed_at = timezone.now()
+                appointment.save()
+
+            return Response(
+                {"message": "Appointment completed"}, status=status.HTTP_200_OK
+            )
 
         except Exception as e:
             return Response(
@@ -328,6 +331,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 appointment.status = appointment.Status.NO_SHOW
                 appointment.save()
+
+            return Response(
+                "Appointment marked as 'No Show'", status=status.HTTP_200_OK
+            )
 
         except Exception as e:
             return Response(
