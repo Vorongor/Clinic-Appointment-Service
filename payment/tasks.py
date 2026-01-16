@@ -11,13 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=5)
-def create_stripe_payment_task(self, appointment_id):
+def create_stripe_payment_task(self, appointment_id, payment_type_value):
     try:
         instance = Appointment.objects.get(id=appointment_id)
-        payment_type = Payment.Type.CONSULTATION
         payment = process_appointment_payment(
-            appointment=instance,
-            payment_type=payment_type
+            appointment=instance, payment_type=payment_type_value
         )
     except Appointment.DoesNotExist:
         logger.error(f"Appointment {appointment_id} not found")
@@ -29,8 +27,7 @@ def create_stripe_payment_task(self, appointment_id):
 @shared_task
 def sync_pending_payments():
     pending_payments = Payment.objects.filter(
-        status="PENDING",
-        created_at__lt=timezone.now() - timezone.timedelta(minutes=15)
+        status="PENDING", created_at__lt=timezone.now() - timezone.timedelta(minutes=15)
     )
 
     for payment in pending_payments:
