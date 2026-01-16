@@ -1,5 +1,7 @@
 from django.db import models
 
+from appointment.models import Appointment
+
 
 class Payment(models.Model):
     class Status(models.TextChoices):
@@ -18,13 +20,11 @@ class Payment(models.Model):
         default=Status.PENDING,
     )
     payment_type = models.CharField(
-        max_length=20,
-        choices=Type.choices,
-        default=Type.CONSULTATION
+        max_length=20, choices=Type.choices, default=Type.CONSULTATION
     )
 
-    appointment = models.OneToOneField(
-        "appointment.Appointment",
+    appointment = models.ForeignKey(
+        Appointment,
         on_delete=models.CASCADE,
         related_name="payments",
     )

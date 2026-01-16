@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from appointment.models import Appointment
 from doctor.serializers import DoctorSlotSerializer
+from payment.serializers import PaymentSerializer
 from user.serializers import UserSerializer
 
 
@@ -88,8 +89,19 @@ class AppointmentSerializer(serializers.ModelSerializer):
 class AppointmentDetailSerializer(AppointmentSerializer):
     doctor_slot = DoctorSlotSerializer(read_only=True)
     patient = UserSerializer(read_only=True)
+    payment = PaymentSerializer(read_only=True)
 
 
 class AppointmentListSerializer(AppointmentSerializer):
     doctor_slot = serializers.StringRelatedField(read_only=True)
     patient = serializers.StringRelatedField(read_only=True)
+    payment_status = serializers.SerializerMethodField()
+
+    class Meta(AppointmentSerializer.Meta):
+        fields = AppointmentSerializer.Meta.fields + ("payment_status",)
+
+    def get_payment_status(self, appointment):
+        last_payment = appointment.payments.order_by("-created_at").first()
+        if last_payment:
+            return last_payment.status
+        return None
