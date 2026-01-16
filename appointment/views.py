@@ -71,6 +71,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             booked_at=slot.start,
             price=slot.doctor.price_per_visit,
         )
+        #TODO trigger sed booked
 
     """
     Cancellation logic with validation and transaction
