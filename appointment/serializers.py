@@ -89,7 +89,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
 class AppointmentDetailSerializer(AppointmentSerializer):
     doctor_slot = DoctorSlotSerializer(read_only=True)
     patient = UserSerializer(read_only=True)
-    payment = PaymentSerializer(read_only=True)
+    payment = PaymentSerializer(read_only=True, source="payments", many=True)
+
+    class Meta(AppointmentSerializer.Meta):
+        fields = AppointmentSerializer.Meta.fields + ("payment",)
 
 
 class AppointmentListSerializer(AppointmentSerializer):
