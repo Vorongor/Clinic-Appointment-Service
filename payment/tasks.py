@@ -1,14 +1,11 @@
-from datetime import timedelta
-
 import stripe
 from celery import shared_task
-from django.utils.timezone import now
+from celery.utils.time import timezone
 
 from appointment.models import Appointment
 from payment.models import Payment
-from payment.services.stripe_checkout import create_checkout_session
+from payment.services.logic import process_appointment_payment
 import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -17,19 +14,10 @@ logger = logging.getLogger(__name__)
 def create_stripe_payment_task(self, appointment_id):
     try:
         instance = Appointment.objects.get(id=appointment_id)
-        money_to_pay = instance.price
-        payment_title = f"Payment for consultation appointment №{instance.id}"
-
-        pay_session = create_checkout_session(
-            amount_usd=money_to_pay,
-            title=payment_title,
-        )
-
-        Payment.objects.create(
+        payment_type = Payment.Type.CONSULTATION
+        payment = process_appointment_payment(
             appointment=instance,
-            session_id=pay_session.id,
-            session_url=pay_session.url,
-            money_to_pay=money_to_pay,
+            payment_type=payment_type
         )
     except Appointment.DoesNotExist:
         logger.error(f"Appointment {appointment_id} not found")
@@ -39,23 +27,18 @@ def create_stripe_payment_task(self, appointment_id):
 
 
 @shared_task
-def sync_pending_payments_with_stripe():
-
+def sync_pending_payments():
     pending_payments = Payment.objects.filter(
-        status=Payment.Status.PENDING,
-        created_at__lt=now() - timedelta(minutes=15)
+        status="PENDING",
+        created_at__lt=timezone.now() - timezone.timedelta(minutes=15)
     )
 
     for payment in pending_payments:
-        session = stripe.checkout.Session.retrieve(payment.session_id)
+        stripe_session = stripe.checkout.Session.retrieve(payment.session_id)
 
-        if session.payment_status == "paid":
-            payment.status = Payment.Status.PAID
+        if stripe_session.payment_status == "paid":
+            payment.status = "PAID"
             payment.save()
-            payment.appointment.status = "BOOKED"
-            payment.appointment.save()
-        elif session.status == "expired":
-            payment.status = Payment.Status.EXPIRED
+        elif stripe_session.status == "expired":
+            payment.status = "EXPIRED"
             payment.save()
-            payment.appointment.status = "CANCELLED"
-            payment.appointment.save()
