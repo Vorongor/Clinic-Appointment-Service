@@ -64,7 +64,11 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
                     slot_copy["end"] = slot_copy.pop("end_time")
                 normalized.append(slot_copy)
 
-            serializer = DoctorSlotSerializer(data=normalized, many=True, context={"nested_create": True})
+            serializer = DoctorSlotSerializer(
+                data=normalized,
+                many=True,
+                context={"nested_create": True}
+            )
             serializer.is_valid(raise_exception=True)
             slots = [(d["start"], d["end"]) for d in serializer.validated_data]
 
