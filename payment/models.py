@@ -17,9 +17,13 @@ class Payment(models.Model):
         choices=Status.choices,
         default=Status.PENDING,
     )
-    payment_type = models.CharField(max_length=20, choices=Type.choices)
+    payment_type = models.CharField(
+        max_length=20,
+        choices=Type.choices,
+        default=Type.CONSULTATION
+    )
 
-    appointment = models.ForeignKey(
+    appointment = models.OneToOneField(
         "appointment.Appointment",
         on_delete=models.CASCADE,
         related_name="payments",
