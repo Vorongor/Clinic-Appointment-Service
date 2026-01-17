@@ -35,15 +35,18 @@ jobs:
           echo "Waiting for DB healthcheck..."
           count=0
           until [ "$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q db))" == "healthy" ]; do
-            if [ $count -gt 20 ]; then echo "Timeout waiting for DB"; exit 1; fi
+            if [ $count -gt 30 ]; then echo "Timeout waiting for DB"; exit 1; fi
             echo "Waiting..."
-            sleep 5
+            sleep 15
             count=$((count+1))
           done
+          echo "Waiting for Web service to be running..."
+          sleep 10
 
-      - name: Check running containers
+      - name: Check container status & logs on failure
+        if: failure() || always()
         run: |
-          docker compose ps
+            docker compose logs --tail=20 web
 
       - name: Run flake8 inside web container
         run: |
