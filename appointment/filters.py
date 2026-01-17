@@ -19,7 +19,9 @@ class AppointmentFilter(filters.FilterSet):
         input_formats=["%Y-%m-%d"],
     )
     booked_exact = filters.DateFilter(
-        field_name="booked_exact", lookup_expr="date", label="Exact booking date"
+        field_name="booked_exact",
+        lookup_expr="date",
+        label="Exact booking date",
     )
     patient_id = filters.NumberFilter(
         field_name="patient_id",

@@ -35,10 +35,13 @@ from payment.models import Payment
         "Filtering by date-from-to, exact date, patient id, doctor",
         parameters=[
             OpenApiParameter(
+                # fmt: off
                 name="search",
-                description="Searching by doctor last name or patient last name",
+                description="Searching by doctor last name "
+                            "or patient last name",
                 required=False,
                 type=str,
+                # fmt: on
             ),
             OpenApiParameter(
                 name="status",
@@ -172,10 +175,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 description="Bad Request",
                 examples=[
                     OpenApiExample(
+                        # fmt: off
                         "Invalid status",
                         value={
-                            "error": "You can't cancel appointment " "with this status"
+                            "error":
+                                "You can't cancel appointment "
+                                "with this status"
                         },
+                        # fmt: on
                     ),
                 ],
             ),
@@ -252,7 +259,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     OpenApiExample(
                         "Invalid status",
                         value={
-                            "error": f"Cannot complete appointment "
+                            "error": "Cannot complete appointment "
                             "from status: {appointment.status}"
                         },
                     ),
@@ -335,10 +342,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 description="Bad Request",
                 examples=[
                     OpenApiExample(
+                        # fmt: off
                         "Invalid status",
                         value={
-                            "error": "You can't mark this appointment as " "'No show'"
+                            "error":
+                                "You can't mark this appointment "
+                                "as 'No show'"
                         },
+                        # fmt: on
                     ),
                     OpenApiExample(
                         "Too early",

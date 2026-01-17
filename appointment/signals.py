@@ -19,14 +19,20 @@ def create_payment_signal_handler(sender, instance, created, **kwargs):
     If we created appointment we call create_stripe_payment_task
     ----------------------------------------------------------------
     block else:
-    If we patched appointment to status=COMPLETED and payment "CONSULTATION" exists - we do nothing,
-    if payment doesn't exist - we will call create_stripe_payment_task with CONSULTATION
+    If we patched appointment to status=COMPLETED
+    and payment "CONSULTATION" exists - we do nothing,
+    if payment doesn't exist - we will call
+    create_stripe_payment_task with CONSULTATION
     ----------------------------------------------------------------
-    If we patched appointment to status=NO_SHOW and payment with NO_SHOW_FEE exists - we do nothing,
-    if payment doesn't exist - we will call create_stripe_payment_task with NO_SHOW_FEE
+    If we patched appointment to status=NO_SHOW and payment
+    with NO_SHOW_FEE exists - we do nothing,
+    if payment doesn't exist - we will call
+    create_stripe_payment_task with NO_SHOW_FEE
     ----------------------------------------------------------------
-    If we patched appointment to status=CANCELLED and payment with CANCELLATION_FEE exists - we do nothing,
-    if payment doesn't exist AND there is less than 24 hours left until the doctor's appointment
+    If we patched appointment to status=CANCELLED and payment
+    with CANCELLATION_FEE exists - we do nothing,
+    if payment doesn't exist AND there is less than 24 hours left
+    until the doctor's appointment
     we will call create_stripe_payment_task with CANCELLATION_FEE
     """
     if created and instance.status == "BOOKED":
