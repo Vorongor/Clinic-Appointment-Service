@@ -32,7 +32,7 @@ class AppointmentFilter(filters.FilterSet):
         label="Doctor ID",
     )
     status = filters.ChoiceFilter(
-        choices=Appointment.status.choices,
+        choices=Appointment.Status.choices,
         field_name="Appointment status",
     )
 
