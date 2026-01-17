@@ -14,7 +14,7 @@ def notify_admin_task(message):
 def check_no_shows_daily():
     no_show_appointments = Appointment.objects.filter(
         status=Appointment.Status.BOOKED,
-        doctor_slot__end__lt=timezone.now(), # ForeignKey to model - DoctorSlot, field - end
+        doctor_slot__end__lt=timezone.now(),
     )
 
     if not no_show_appointments.exists():
@@ -25,4 +25,5 @@ def check_no_shows_daily():
 
     no_show_appointments.update(status=Appointment.Status.NO_SHOW)
 
-    send_telegram_message(f"Daily update: {count} appointment(s) marked as NO_SHOW")
+    send_telegram_message(f"Daily update: {count} "
+                          f"appointment(s) marked as NO_SHOW")

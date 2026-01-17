@@ -4,10 +4,6 @@ from specializations.models import Specialization
 
 
 class Doctor(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE
-    )
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     specializations = models.ManyToManyField(
@@ -22,7 +18,9 @@ class Doctor(models.Model):
 
 class DoctorSlot(models.Model):
     doctor = models.ForeignKey(
-        Doctor, on_delete=models.CASCADE, related_name="slots"
+        Doctor,
+        on_delete=models.CASCADE,
+        related_name="slots"
     )
     start = models.DateTimeField()
     end = models.DateTimeField()
@@ -33,5 +31,7 @@ class DoctorSlot(models.Model):
         unique_together = ("doctor", "start", "end")
 
     def __str__(self):
-        return f"Slot #{self.id} " \
-               f"| Doctor - {self.doctor} | {self.start} - {self.end}"
+        return (
+            f"Slot #{self.id} " f"| "
+            f"Doctor - {self.doctor} | {self.start} - {self.end}"
+        )

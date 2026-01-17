@@ -1,5 +1,7 @@
 from django.db import models
 
+from appointment.models import Appointment
+
 
 class Payment(models.Model):
     class Status(models.TextChoices):
@@ -17,10 +19,12 @@ class Payment(models.Model):
         choices=Status.choices,
         default=Status.PENDING,
     )
-    payment_type = models.CharField(max_length=20, choices=Type.choices)
+    payment_type = models.CharField(
+        max_length=20, choices=Type.choices, default=Type.CONSULTATION
+    )
 
     appointment = models.ForeignKey(
-        "appointment.Appointment",
+        Appointment,
         on_delete=models.CASCADE,
         related_name="payments",
     )
@@ -35,4 +39,5 @@ class Payment(models.Model):
         ordering = ("-created_at",)
 
     def __str__(self) -> str:
-        return f"Payment #{self.id} | {self.payment_type} | {self.status} | appt #{self.appointment_id}"
+        return (f"Payment #{self.id} | {self.payment_type} | {self.status} "
+                f"| appt #{self.appointment_id}")

@@ -15,7 +15,8 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "web"
+    "web",
+    "nginx",
 ]
 
 INSTALLED_APPS = [
@@ -33,9 +34,10 @@ INSTALLED_APPS = [
     "controller",
     "specializations",
     "doctor",
-    "appointment",
+    # "appointment",
     "notifications",
     "payment",
+    "appointment.apps.AppointmentConfig",
 ]
 
 MIDDLEWARE = [
@@ -81,7 +83,7 @@ DATABASES = {
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation"
-                ".UserAttributeSimilarityValidator",
+        ".UserAttributeSimilarityValidator",
     },
     {
         "NAME": "django.contrib.auth.password_validation"
@@ -126,13 +128,14 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Clinic Appointment Service",
     "DESCRIPTION": "Online appointment management system that allows patients "
-                   "to register, browse doctors and available time slots, book "
-                   "appointments, cancel or complete visits. Payments are "
-                   "processed via Stripe. Staff receive Telegram notifications "
-                   "about new bookings, cancellations, no-shows, and "
-                   "successful payments",
+    "to register, browse doctors and available time slots, book "
+    "appointments, cancel or complete visits. Payments are "
+    "processed via Stripe. Staff receive Telegram notifications "
+    "about new bookings, cancellations, no-shows, and "
+    "successful payments",
     "VERSION": "1.0.1",
     "SERVE_INCLUDER_SCHEMA": False,
+    "SERVE_PERMISSIONS": [],
 }
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
@@ -144,9 +147,9 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_BEAT_SCHEDULE = {
-    'map-no-shows-every-midnight': {
-        'task': 'notifications.tasks.check_no_shows_daily',
-        'schedule': crontab(hour=19, minute=0),
+    "map-no-shows-every-midnight": {
+        "task": "notifications.tasks.check_no_shows_daily",
+        "schedule": crontab(hour=19, minute=0),
     },
 }
 
@@ -160,5 +163,19 @@ SIMPLE_JWT = {
 }
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", "http://localhost:8000/")
-STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", "http://localhost:8000/")
+STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", "http://127.0.0.1/")
+STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", "http://127.0.0.1/")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+LOGGING = {
+    "version": 1,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "DEBUG",
+    },
+}

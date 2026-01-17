@@ -1,12 +1,18 @@
 from rest_framework import viewsets, status, mixins
-from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.db.models import Exists, OuterRef
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Count, Q
 from user.permissions import IsAdminOrReadOnly
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from .models import Doctor, DoctorSlot
-from .serializers import DoctorSerializer, DoctorSlotSerializer
+from .serializers import (
+    DoctorSerializer,
+    DoctorSlotSerializer,
+    DoctorSlotDetailSerializer,
+    DoctorSlotIntervalSerializer,
+)
+from .filters import DoctorFilter, DoctorSlotFilter
 from appointment.models import Appointment
 
 
@@ -14,80 +20,192 @@ class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["specializations"]
+    filterset_class = DoctorFilter
     permission_classes = [IsAdminOrReadOnly]
 
-    @action(detail=True, methods=["get", "post"], url_path="slots")
-    def slots(self, request, pk=None):
-        doctor = self.get_object()
-        if request.method == "POST":
-            data = request.data
-            if not isinstance(data, list):
-                return Response(
-                    {"detail": "Expected a list of slots"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+    @extend_schema(
+        summary="List doctors",
+        description="Retrieve a list of doctors. "
+                    "Filter by specialization name using the "
+                    "'specializations' query parameter.",
+        parameters=[
+            OpenApiParameter(
+                name="specializations",
+                type=OpenApiTypes.STR,
+                description="Filter doctors by specialization name(icontains)",
+            ),
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
-            serializer = DoctorSlotSerializer(data=data, many=True)
-            serializer.is_valid(raise_exception=True)
-            created = []
 
-            for item in serializer.validated_data:
-                slot = DoctorSlot.objects.create(
-                    doctor=doctor,
-                    start=item["start"],
-                    end=item["end"]
-                )
-                created.append(slot)
+class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
+    """
+    Nested viewset for /doctors/<doctor_id>/slots/
+    Supports GET list (with filters) and POST bulk-create via intervals.
+    """
 
-            out_serializer = DoctorSlotSerializer(created, many=True)
-            return Response(
-                out_serializer.data,
-                status=status.HTTP_201_CREATED
-            )
+    serializer_class = DoctorSlotIntervalSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = DoctorSlotFilter
+    permission_classes = [IsAdminOrReadOnly]
 
-        qs = doctor.slots.all()
+    def get_queryset(self):
+        doctor_id = self.kwargs["doctor_pk"]
+        return DoctorSlot.objects.filter(doctor_id=doctor_id)
 
-        from_param = request.query_params.get("from")
-        to_param = request.query_params.get("to")
-        if from_param:
-            qs = qs.filter(start__gte=from_param)
-        if to_param:
-            qs = qs.filter(end__lte=to_param)
-
-        available_only = request.query_params.get("available_only")
-        if available_only in ["true", "True", "1"]:
-            qs = qs.annotate(
-                booked_count=Count(
-                    "appointments",
-                    filter=Q(
-                        appointments__status=Appointment.Status.BOOKED
-                    )
-                )
-                ).filter(booked_count=0)
-
+    @extend_schema(
+        summary="List doctor slots",
+        description="Retrieve slots for a specific doctor, with "
+                    "optional filters for date range and availability.",
+        parameters=[
+            OpenApiParameter(
+                name="from_date",
+                type=OpenApiTypes.DATETIME,
+                description="Filter slots starting on or after this date",
+            ),
+            OpenApiParameter(
+                name="to_date",
+                type=OpenApiTypes.DATETIME,
+                description="Filter slots ending on or before this date",
+            ),
+            OpenApiParameter(
+                name="available_only",
+                type=OpenApiTypes.STR,
+                enum=["True", "False"],
+                description="If True, show only slots "
+                            "without booked appointments",
+            ),
+        ],
+    )
+    def list(self, request, doctor_pk=None):
+        qs = self.get_queryset()
+        filterset = self.filterset_class(request.GET, queryset=qs)
+        qs = filterset.qs
         serializer = DoctorSlotSerializer(qs, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Create doctor slots",
+        description="Create multiple slots for a doctor. "
+                    "Accepts either a list of slot objects "
+                    "or an interval object to generate slots.",
+        request={
+            "application/json": {
+                "oneOf": [
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "start": {"type": "string",
+                                          "format": "date-time"},
+                                "end": {"type": "string",
+                                        "format": "date-time"},
+                            },
+                        },
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "interval_start": {"type": "string",
+                                               "format": "date-time"},
+                            "interval_end": {"type": "string",
+                                             "format": "date-time"},
+                            "duration": {"type": "integer"},
+                        },
+                    },
+                ],
+            },
+        },
+        responses={
+            201: DoctorSlotSerializer(many=True),
+        },
+    )
+    def create(self, request, doctor_pk=None):
+        """
+        POST /doctors/<id>/slots/
+
+        Accepts list of explicit slots or
+        interval-based generation
+        """
+        data = request.data
+        slots = []
+
+        if isinstance(data, list):
+            normalized = []
+            for slot_data in data:
+                slot_copy = dict(slot_data)
+                if "start_time" in slot_copy:
+                    slot_copy["start"] = slot_copy.pop("start_time")
+                if "end_time" in slot_copy:
+                    slot_copy["end"] = slot_copy.pop("end_time")
+                normalized.append(slot_copy)
+
+            serializer = DoctorSlotSerializer(
+                data=normalized, many=True, context={"nested_create": True}
+            )
+            serializer.is_valid(raise_exception=True)
+            slots = [(d["start"], d["end"]) for d in serializer.validated_data]
+
+        elif isinstance(data, dict):
+            interval_ser = DoctorSlotIntervalSerializer(data=data)
+            interval_ser.is_valid(raise_exception=True)
+            slots = interval_ser.generate_slots()
+
+        else:
+            return Response(
+                {"detail": "Expected list of slots or interval object"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created = []
+        for start, end in slots:
+            slot = DoctorSlot.objects.create(doctor_id=doctor_pk, start=start,
+                                             end=end)
+            created.append(slot)
+
+        out_serializer = DoctorSlotSerializer(created, many=True)
+        return Response(out_serializer.data, status=status.HTTP_201_CREATED)
+
 
 class DoctorSlotViewSet(
-    mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin,
+    mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
     viewsets.GenericViewSet
 ):
-    """Provides retrieve and destroy for individual slots."""
+    """
+    Flat viewset for /slots/<id>/
+    Supports GET detail and DELETE (only if no appointment exists).
+    """
+
     queryset = DoctorSlot.objects.all()
     serializer_class = DoctorSlotSerializer
     permission_classes = [IsAdminOrReadOnly]
 
+    def get_serializer_class(self):
+        """Use detail serializer for retrieve action."""
+        if self.action == "retrieve":
+            return DoctorSlotDetailSerializer
+        return DoctorSlotSerializer
+
+    @extend_schema(
+        summary="Delete a doctor slot",
+        description="Delete a slot if it has no associated appointments.",
+        responses={
+            204: None,
+            400: {
+                "description": "Cannot delete slot "
+                               "with existing appointments"},
+        },
+    )
     def destroy(self, request, pk=None):
         slot = self.get_object()
-
         if slot.appointments.exists():
             return Response(
-                {"detail": "Cannot delete slot with existing appointments"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"detail": "Cannot delete slot with existing "
+                           "appointments"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-
         slot.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
