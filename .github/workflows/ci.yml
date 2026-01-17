@@ -16,16 +16,20 @@ jobs:
 
       - name: Create .env file
         run: |
-          cat <<EOF > .env
-          SECRET_KEY=ci_test_secret_key_123
-          POSTGRES_DB=clinic_db
-          POSTGRES_USER=clinic_user
-          POSTGRES_PASSWORD=clinic_pass
-          POSTGRES_HOST=db
-          POSTGRES_PORT=5432
-          REDIS_URL=redis://redis:6379/0
-          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
-          EOF
+            cat <<EOF > .env
+            SECRET_KEY=ci_test_secret_key_123
+            DEBUG=True
+            CELERY_TASK_ALWAYS_EAGER=True
+            CELERY_BROKER_URL=memory://
+            
+            POSTGRES_DB=clinic_db
+            POSTGRES_USER=clinic_user
+            POSTGRES_PASSWORD=clinic_pass
+            POSTGRES_HOST=db
+            POSTGRES_PORT=5432
+            REDIS_URL=redis://redis:6379/0
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            EOF
 
       - name: Build and start containers
         run: |
