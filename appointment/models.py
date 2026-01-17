@@ -20,7 +20,9 @@ class Appointment(models.Model):
         DoctorSlot, on_delete=models.CASCADE, related_name="appointment"
     )
     patient = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="appointments"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="appointments"
     )
     status = models.CharField(
         max_length=15, choices=Status.choices, default=Status.BOOKED

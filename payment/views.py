@@ -96,7 +96,7 @@ class PaymentViewSet(ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        #TODO TRIGGER TASK STUB: appointment_success_update
+        # TODO TRIGGER TASK STUB: appointment_success_update
         # appointment_success_update.delay(payment.appointment.id)
         return Response(
             {
@@ -130,7 +130,7 @@ class PaymentViewSet(ReadOnlyModelViewSet):
         if session_id:
             payment = Payment.objects.filter(session_id=session_id).first()
             if payment:
-                #TODO TRIGGER TASK STUB: appointment_cancel_update
+                # TODO TRIGGER TASK STUB: appointment_cancel_update
                 # appointment_cancel_update.delay(payment.appointment.id)
                 print(
                     f"DEBUG: Triggering task appointment_cancel_update for "

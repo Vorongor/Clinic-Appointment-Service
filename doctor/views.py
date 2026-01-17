@@ -10,7 +10,7 @@ from .serializers import (
     DoctorSerializer,
     DoctorSlotSerializer,
     DoctorSlotDetailSerializer,
-    DoctorSlotIntervalSerializer
+    DoctorSlotIntervalSerializer,
 )
 from .filters import DoctorFilter, DoctorSlotFilter
 from appointment.models import Appointment
@@ -25,9 +25,15 @@ class DoctorViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         summary="List doctors",
-        description="Retrieve a list of doctors. Filter by specialization name using the 'specializations' query parameter.",
+        description="Retrieve a list of doctors. "
+                    "Filter by specialization name using the "
+                    "'specializations' query parameter.",
         parameters=[
-            OpenApiParameter(name='specializations', type=OpenApiTypes.STR, description='Filter doctors by specialization name (icontains)'),
+            OpenApiParameter(
+                name="specializations",
+                type=OpenApiTypes.STR,
+                description="Filter doctors by specialization name(icontains)",
+            ),
         ],
     )
     def list(self, request, *args, **kwargs):
@@ -39,6 +45,7 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
     Nested viewset for /doctors/<doctor_id>/slots/
     Supports GET list (with filters) and POST bulk-create via intervals.
     """
+
     serializer_class = DoctorSlotIntervalSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = DoctorSlotFilter
@@ -50,11 +57,26 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
 
     @extend_schema(
         summary="List doctor slots",
-        description="Retrieve slots for a specific doctor, with optional filters for date range and availability.",
+        description="Retrieve slots for a specific doctor, with "
+                    "optional filters for date range and availability.",
         parameters=[
-            OpenApiParameter(name='from_date', type=OpenApiTypes.DATETIME, description='Filter slots starting on or after this date'),
-            OpenApiParameter(name='to_date', type=OpenApiTypes.DATETIME, description='Filter slots ending on or before this date'),
-            OpenApiParameter(name='available_only', type=OpenApiTypes.STR, enum=['True', 'False'], description='If True, show only slots without booked appointments'),
+            OpenApiParameter(
+                name="from_date",
+                type=OpenApiTypes.DATETIME,
+                description="Filter slots starting on or after this date",
+            ),
+            OpenApiParameter(
+                name="to_date",
+                type=OpenApiTypes.DATETIME,
+                description="Filter slots ending on or before this date",
+            ),
+            OpenApiParameter(
+                name="available_only",
+                type=OpenApiTypes.STR,
+                enum=["True", "False"],
+                description="If True, show only slots "
+                            "without booked appointments",
+            ),
         ],
     )
     def list(self, request, doctor_pk=None):
@@ -66,26 +88,32 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
 
     @extend_schema(
         summary="Create doctor slots",
-        description="Create multiple slots for a doctor. Accepts either a list of slot objects or an interval object to generate slots.",
+        description="Create multiple slots for a doctor. "
+                    "Accepts either a list of slot objects "
+                    "or an interval object to generate slots.",
         request={
-            'application/json': {
-                'oneOf': [
+            "application/json": {
+                "oneOf": [
                     {
-                        'type': 'array',
-                        'items': {
-                            'type': 'object',
-                            'properties': {
-                                'start': {'type': 'string', 'format': 'date-time'},
-                                'end': {'type': 'string', 'format': 'date-time'},
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "start": {"type": "string",
+                                          "format": "date-time"},
+                                "end": {"type": "string",
+                                        "format": "date-time"},
                             },
                         },
                     },
                     {
-                        'type': 'object',
-                        'properties': {
-                            'interval_start': {'type': 'string', 'format': 'date-time'},
-                            'interval_end': {'type': 'string', 'format': 'date-time'},
-                            'duration': {'type': 'integer'},
+                        "type": "object",
+                        "properties": {
+                            "interval_start": {"type": "string",
+                                               "format": "date-time"},
+                            "interval_end": {"type": "string",
+                                             "format": "date-time"},
+                            "duration": {"type": "integer"},
                         },
                     },
                 ],
@@ -116,9 +144,7 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
                 normalized.append(slot_copy)
 
             serializer = DoctorSlotSerializer(
-                data=normalized,
-                many=True,
-                context={"nested_create": True}
+                data=normalized, many=True, context={"nested_create": True}
             )
             serializer.is_valid(raise_exception=True)
             slots = [(d["start"], d["end"]) for d in serializer.validated_data]
@@ -130,17 +156,14 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
 
         else:
             return Response(
-                {"detail": "Expected a list of slots or an interval object"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"detail": "Expected list of slots or interval object"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         created = []
         for start, end in slots:
-            slot = DoctorSlot.objects.create(
-                doctor_id=doctor_pk,
-                start=start,
-                end=end
-            )
+            slot = DoctorSlot.objects.create(doctor_id=doctor_pk, start=start,
+                                             end=end)
             created.append(slot)
 
         out_serializer = DoctorSlotSerializer(created, many=True)
@@ -148,14 +171,14 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
 
 
 class DoctorSlotViewSet(
-    mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin,
+    mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
     viewsets.GenericViewSet
 ):
     """
     Flat viewset for /slots/<id>/
     Supports GET detail and DELETE (only if no appointment exists).
     """
+
     queryset = DoctorSlot.objects.all()
     serializer_class = DoctorSlotSerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -171,15 +194,18 @@ class DoctorSlotViewSet(
         description="Delete a slot if it has no associated appointments.",
         responses={
             204: None,
-            400: {'description': 'Cannot delete slot with existing appointments'},
+            400: {
+                "description": "Cannot delete slot "
+                               "with existing appointments"},
         },
     )
     def destroy(self, request, pk=None):
         slot = self.get_object()
         if slot.appointments.exists():
             return Response(
-                {"detail": "Cannot delete slot with existing appointments"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"detail": "Cannot delete slot with existing "
+                           "appointments"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         slot.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

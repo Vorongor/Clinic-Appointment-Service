@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def create_stripe_payment_task(self, appointment_id, payment_type_value):
     try:
         instance = Appointment.objects.get(id=appointment_id)
-        payment = process_appointment_payment(
+        process_appointment_payment(
             appointment=instance, payment_type=payment_type_value
         )
     except Appointment.DoesNotExist:
@@ -27,7 +27,8 @@ def create_stripe_payment_task(self, appointment_id, payment_type_value):
 @shared_task
 def sync_pending_payments():
     pending_payments = Payment.objects.filter(
-        status="PENDING", created_at__lt=timezone.now() - timezone.timedelta(minutes=15)
+        status="PENDING",
+        created_at__lt=timezone.now() - timezone.timedelta(minutes=15)
     )
 
     for payment in pending_payments:

@@ -4,7 +4,11 @@ from django.utils import timezone
 
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiResponse,
+    OpenApiExample
+)
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -82,10 +86,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="Mark appointment as Canceled",
         description=(
-            "Changes the appointment status to CANCELED "
-            "and charging 50% of price from balance if cancelled "
-            "later than 24 hours before the visit."
-            "Allowed for staff and users."
+                "Changes the appointment status to CANCELED "
+                "and charging 50% of price from balance if cancelled "
+                "later than 24 hours before the visit."
+                "Allowed for staff and users."
         ),
         request=None,
         responses={
@@ -96,8 +100,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         "Success response",
                         value={
                             "status": "Success",
-                            "message": "Appointment marked as 'Cancelled'."
-                            "Attempt to withdraw funds from the balance",
+                            "message":
+                                ("Appointment marked as 'Cancelled'."
+                                 "Attempt to withdraw funds from the balance"),
                         },
                     )
                 ],
@@ -109,7 +114,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         "Invalid status",
                         value={
                             "error": "Only BOOKED appointments "
-                            "can be marked as 'Cancelled'."
+                                     "can be marked as 'Cancelled'."
                         },
                     ),
                 ],
@@ -137,7 +142,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         if appointment.status != appointment.Status.BOOKED:
             return Response(
-                {"error": "You can't cancel appointment with this status"},
+                {
+                    "error": "You can't cancel appointment with this status"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -147,7 +154,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment.save()
 
             return Response(
-                {"message": "Appointment cancelled"}, status=status.HTTP_200_OK
+                {"message": "Appointment cancelled"},
+                status=status.HTTP_200_OK
             )
 
         except Exception as e:
@@ -163,9 +171,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="Mark appointment as Completed",
         description=(
-            "Changes the appointment status to COMPLETED"
-            " and charging 100% of price from balance"
-            "Allowed only for staff users."
+                "Changes the appointment status to COMPLETED"
+                " and charging 100% of price from balance"
+                "Allowed only for staff users."
         ),
         request=None,
         responses={
@@ -177,7 +185,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         value={
                             "status": "Success",
                             "message": "Appointment marked as 'Completed'."
-                            "Attempt to withdraw funds from the balance",
+                                       "Attempt to withdraw "
+                                       "funds from the balance",
                         },
                     )
                 ],
@@ -189,7 +198,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         "Invalid status",
                         value={
                             "error": "Only BOOKED appointments "
-                            "can be marked as 'No Show'."
+                                     "can be marked as 'No Show'."
                         },
                     ),
                 ],
@@ -220,7 +229,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {
                     "error": f"Cannot complete appointment "
-                    f"from status: {appointment.status}"
+                             f"from status: {appointment.status}"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -232,7 +241,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment.save()
 
             return Response(
-                {"message": "Appointment completed"}, status=status.HTTP_200_OK
+                {"message": "Appointment completed"},
+                status=status.HTTP_200_OK
             )
 
         except Exception as e:
@@ -248,10 +258,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="Mark appointment as No-Show",
         description=(
-            "Changes the appointment status to NO_SHOW "
-            "and creates a penalty payment (120%). "
-            "Allowed only for staff users. Can only be "
-            "performed after the appointment start time."
+                "Changes the appointment status to NO_SHOW "
+                "and creates a penalty payment (120%). "
+                "Allowed only for staff users. Can only be "
+                "performed after the appointment start time."
         ),
         request=None,
         responses={
@@ -263,8 +273,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         value={
                             "status": "Success",
                             "message": "Appointment marked as 'No Show'. "
-                            "120% penalty fee applied."
-                            "Attempt to withdraw funds from the balance",
+                                       "120% penalty fee applied."
+                                       "Attempt to withdraw funds "
+                                       "from the balance",
                         },
                     )
                 ],
@@ -276,14 +287,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         "Invalid status",
                         value={
                             "error": "Only BOOKED appointments "
-                            "can be marked as 'No Show'."
+                                     "can be marked as 'No Show'."
                         },
                     ),
                     OpenApiExample(
                         "Too early",
                         value={
                             "error": "You cannot mark as 'No Show' "
-                            "before the appointment time starts."
+                                     "before the appointment time starts."
                         },
                     ),
                 ],
@@ -295,7 +306,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     OpenApiExample(
                         "Database error",
                         value={
-                            "error": "Transaction failed: " "Database connection lost"
+                            "error":
+                                "Transaction failed: Database connection lost"
                         },
                     )
                 ],
@@ -322,7 +334,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {
                     "error": "You cannot mark as 'No Show' "
-                    "before the appointment time starts."
+                             "before the appointment time starts."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -333,7 +345,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment.save()
 
             return Response(
-                "Appointment marked as 'No Show'", status=status.HTTP_200_OK
+                "Appointment marked as 'No Show'",
+                status=status.HTTP_200_OK
             )
 
         except Exception as e:

@@ -9,7 +9,7 @@ from .tasks import notify_admin_task
 
 @dataclass
 class AppointmentDTO:
-    id: int
+    id_: int
     status: str
     doctor_name: str
     patient_name: str
@@ -23,9 +23,9 @@ class AppointmentDTO:
         }
         return (
             f"{headers.get(event_type, '🔔 Повідомлення')}\n"
-            f"🆔 Номер: #{self.id}\n"
+            f"🆔 Номер: #{self.id_}\n"
             f"👤 Пацієнт: {self.patient_name}\n"
-            f"👨‍⚕️ Врач: {self.doctor_name}\n"
+            f"👨‍⚕️ Лікар: {self.doctor_name}\n"
             f"📅 Час: {self.slot_time}\n"
             f"💰 Сума: ${self.price}\n"
             f"🚩 Статус: {self.status}"
@@ -35,10 +35,11 @@ class AppointmentDTO:
 @receiver(post_save, sender=Appointment)
 def appointment_notification_signal(sender, instance, created, **kwargs):
     dto = AppointmentDTO(
-        id=instance.id,
+        id_=instance.id,
         status=instance.get_status_display(),
         doctor_name=str(instance.doctor_slot.doctor),
-        patient_name=f"{instance.patient.first_name} {instance.patient.last_name}",
+        patient_name=f"{instance.patient.first_name} "
+                     f"{instance.patient.last_name}",
         slot_time=instance.doctor_slot.start.strftime("%Y-%m-%d %H:%M"),
         price=str(instance.price)
     )

@@ -7,20 +7,18 @@ from drf_spectacular.views import (
 )
 from rest_framework.permissions import AllowAny
 
-from controller.views import SpectacularSwaggerViewUP
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path(
         "api/schema/",
         SpectacularAPIView.as_view(permission_classes=[AllowAny]),
-        name="schema"
+        name="schema",
     ),
     path(
         "api/schema/swagger-ui/",
         SpectacularSwaggerView.as_view(
-            permission_classes=[AllowAny],
-            url_name="schema"
+            permission_classes=[AllowAny], url_name="schema"
         ),
         name="swagger-ui",
     ),

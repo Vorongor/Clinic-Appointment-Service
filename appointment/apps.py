@@ -6,4 +6,4 @@ class AppointmentConfig(AppConfig):
     name = "appointment"
 
     def ready(self):
-        import appointment.signals #noqa
+        import appointment.signals  # noqa

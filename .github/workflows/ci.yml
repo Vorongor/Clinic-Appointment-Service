@@ -1,0 +1,67 @@
+name: CI — Docker + Flake8 + Tests
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+            cat <<EOF > .env
+            SECRET_KEY=ci_test_secret_key_123
+            DEBUG=True
+            CELERY_TASK_ALWAYS_EAGER=True
+            CELERY_BROKER_URL=memory://
+            
+            POSTGRES_DB=clinic_db
+            POSTGRES_USER=clinic_user
+            POSTGRES_PASSWORD=clinic_pass
+            POSTGRES_HOST=db
+            POSTGRES_PORT=5432
+            REDIS_URL=redis://redis:6379/0
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            EOF
+
+      - name: Build and start containers
+        run: |
+          docker compose up --build -d
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for DB healthcheck..."
+          count=0
+          until [ "$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q db))" == "healthy" ]; do
+            if [ $count -gt 30 ]; then echo "Timeout waiting for DB"; exit 1; fi
+            echo "Waiting..."
+            sleep 15
+            count=$((count+1))
+          done
+          echo "Waiting for Web service to be running..."
+          sleep 10
+
+      - name: Check container status & logs on failure
+        if: failure() || always()
+        run: |
+            docker compose logs --tail=20 web
+
+      - name: Run flake8 inside web container
+        run: |
+          docker compose exec -T web flake8 .
+
+      - name: Run Django tests
+        run: |
+          docker compose exec -T web python manage.py test
+
+      - name: Stop containers
+        if: always()
+        run: |
+          docker compose down
