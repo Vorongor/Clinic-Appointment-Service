@@ -19,27 +19,20 @@ def create_payment_signal_handler(sender, instance, created, **kwargs):
     If we created appointment we call create_stripe_payment_task
     ----------------------------------------------------------------
     block else:
-    If we patched appointment to status=COMPLETED and payment
-    "CONSULTATION" exists - we do nothing,
-    if payment doesn't exist - we will call
-    create_stripe_payment_task with CONSULTATION
+    If we patched appointment to status=COMPLETED and payment "CONSULTATION" exists - we do nothing,
+    if payment doesn't exist - we will call create_stripe_payment_task with CONSULTATION
     ----------------------------------------------------------------
-    If we patched appointment to status=NO_SHOW and payment
-    with NO_SHOW_FEE exists - we do nothing,
-    if payment doesn't exist - we will call
-    create_stripe_payment_task with NO_SHOW_FEE
+    If we patched appointment to status=NO_SHOW and payment with NO_SHOW_FEE exists - we do nothing,
+    if payment doesn't exist - we will call create_stripe_payment_task with NO_SHOW_FEE
     ----------------------------------------------------------------
-    If we patched appointment to status=CANCELLED and payment with
-    CANCELLATION_FEE exists - we do nothing,
-    if payment doesn't exist AND there is less than 24 hours left
-    until the doctor's appointment
+    If we patched appointment to status=CANCELLED and payment with CANCELLATION_FEE exists - we do nothing,
+    if payment doesn't exist AND there is less than 24 hours left until the doctor's appointment
     we will call create_stripe_payment_task with CANCELLATION_FEE
     """
     if created and instance.status == "BOOKED":
         transaction.on_commit(
             lambda: create_stripe_payment_task.delay(
-                instance.id,
-                "CONSULTATION"
+                instance.id, Payment.Type.CONSULTATION
             )
         )
     else:
@@ -51,7 +44,7 @@ def create_payment_signal_handler(sender, instance, created, **kwargs):
             if not has_payment:
                 transaction.on_commit(
                     lambda: create_stripe_payment_task.delay(
-                        instance.id, "CONSULTATION"
+                        instance.id, Payment.Type.CONSULTATION
                     )
                 )
         elif instance.status == Appointment.Status.NO_SHOW:
@@ -62,7 +55,7 @@ def create_payment_signal_handler(sender, instance, created, **kwargs):
             if not has_penalty:
                 transaction.on_commit(
                     lambda: create_stripe_payment_task.delay(
-                        instance.id, "NO_SHOW_FEE"
+                        instance.id, Payment.Type.NO_SHOW_FEE
                     )
                 )
         elif instance.status == Appointment.Status.CANCELLED:
@@ -71,12 +64,10 @@ def create_payment_signal_handler(sender, instance, created, **kwargs):
             ).exists()
             if instance.doctor_slot and instance.doctor_slot.start:
                 time_until_start = instance.doctor_slot.start - timezone.now()
-                if timedelta(seconds=0) < time_until_start < timedelta(
-                        hours=24
-                ):
+                if timedelta(seconds=0) < time_until_start < timedelta(hours=24):
                     if not has_penalty:
                         transaction.on_commit(
                             lambda: create_stripe_payment_task.delay(
-                                instance.id, "CANCELLATION_FEE"
+                                instance.id, Payment.Type.CANCELLATION_FEE
                             )
                         )
