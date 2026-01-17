@@ -14,9 +14,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
-
       - name: Create .env file
         run: |
           cat <<EOF > .env
@@ -31,26 +28,35 @@ jobs:
 
       - name: Build and start containers
         run: |
-          docker-compose up --build -d
+          # Використовуємо "docker compose" замість "docker-compose"
+          docker compose up --build -d
 
-      - name: Wait for services to be healthy
+      - name: Wait for services to be ready
         run: |
-          echo "Waiting for containers..."
-          sleep 15
+          echo "Waiting for DB healthcheck..."
+          # Чекаємо, поки контейнер db стане healthy (використовує ваш healthcheck з docker-compose.yml)
+          count=0
+          until [ "$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q db))" == "healthy" ]; do
+            if [ $count -gt 20 ]; then echo "Timeout waiting for DB"; exit 1; fi
+            echo "Waiting..."
+            sleep 5
+            count=$((count+1))
+          done
 
       - name: Check running containers
         run: |
-          docker ps
+          docker compose ps
 
       - name: Run flake8 inside web container
         run: |
-          docker-compose exec -T web flake8
+          # Прапорець -T важливий (disable pseudo-tty)
+          docker compose exec -T web flake8 .
 
       - name: Run Django tests
         run: |
-          docker-compose exec -T web python manage.py test
+          docker compose exec -T web python manage.py test
 
       - name: Stop containers
         if: always()
         run: |
-          docker-compose down
+          docker compose down
