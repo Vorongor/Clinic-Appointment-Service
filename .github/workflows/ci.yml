@@ -28,13 +28,11 @@ jobs:
 
       - name: Build and start containers
         run: |
-          # Використовуємо "docker compose" замість "docker-compose"
           docker compose up --build -d
 
       - name: Wait for services to be ready
         run: |
           echo "Waiting for DB healthcheck..."
-          # Чекаємо, поки контейнер db стане healthy (використовує ваш healthcheck з docker-compose.yml)
           count=0
           until [ "$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q db))" == "healthy" ]; do
             if [ $count -gt 20 ]; then echo "Timeout waiting for DB"; exit 1; fi
@@ -49,7 +47,6 @@ jobs:
 
       - name: Run flake8 inside web container
         run: |
-          # Прапорець -T важливий (disable pseudo-tty)
           docker compose exec -T web flake8 .
 
       - name: Run Django tests
