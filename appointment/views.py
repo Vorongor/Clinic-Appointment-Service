@@ -53,10 +53,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         User can only see own appointments.
         Staff can see all appointments.
         """
+        query = (
+            Appointment.objects.all()
+            .select_related("patient", "doctor_slot")
+            .prefetch_related("payments")
+        )
         user = self.request.user
         if user.is_staff:
-            return Appointment.objects.all()
-        return Appointment.objects.filter(patient_id=user.id)
+            return query
+        return query.filter(patient_id=user.id)
 
     def perform_create(self, serializer):
         """
@@ -68,7 +73,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer.save(
             patient=patient,
         )
-        #TODO trigger sed booked
+        # TODO trigger sed booked
 
     """
     Cancellation logic with validation and transaction
@@ -138,12 +143,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         try:
             with transaction.atomic():
-                time_until_appointment = appointment.booked_at - timezone.now()
                 appointment.status = appointment.Status.CANCELLED
                 appointment.save()
 
-            if time_until_appointment < timedelta(hours=24):
-                pass
+            return Response(
+                {"message": "Appointment cancelled"}, status=status.HTTP_200_OK
+            )
 
         except Exception as e:
             return Response(
@@ -221,11 +226,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            if appointment.status == appointment.Status.BOOKED:
-                with transaction.atomic():
-                    appointment.status = appointment.Status.COMPLETED
-                    appointment.completed_at = timezone.now()
-                    appointment.save()
+            with transaction.atomic():
+                appointment.status = appointment.Status.COMPLETED
+                appointment.completed_at = timezone.now()
+                appointment.save()
+
+            return Response(
+                {"message": "Appointment completed"}, status=status.HTTP_200_OK
+            )
 
         except Exception as e:
             return Response(
@@ -323,6 +331,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 appointment.status = appointment.Status.NO_SHOW
                 appointment.save()
+
+            return Response(
+                "Appointment marked as 'No Show'", status=status.HTTP_200_OK
+            )
 
         except Exception as e:
             return Response(

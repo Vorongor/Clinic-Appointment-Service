@@ -38,6 +38,10 @@ class Appointment(models.Model):
         )
 
     def save(self, *args, **kwargs):
+        """
+        Redefined method to automatically fill
+        - price and booking time
+        """
         if self.doctor_slot:
             if not self.price:
                 self.price = self.doctor_slot.doctor.price_per_visit
