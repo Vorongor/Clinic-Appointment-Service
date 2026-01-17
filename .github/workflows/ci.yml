@@ -1,0 +1,56 @@
+name: CI — Docker + Flake8 + Tests
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env file
+        run: |
+          cat <<EOF > .env
+          POSTGRES_DB=clinic_db
+          POSTGRES_USER=clinic_user
+          POSTGRES_PASSWORD=clinic_pass
+          POSTGRES_HOST=db
+          POSTGRES_PORT=5432
+          REDIS_URL=redis://redis:6379/0
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          EOF
+
+      - name: Build and start containers
+        run: |
+          docker-compose up --build -d
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for containers..."
+          sleep 15
+
+      - name: Check running containers
+        run: |
+          docker ps
+
+      - name: Run flake8 inside web container
+        run: |
+          docker-compose exec -T web flake8
+
+      - name: Run Django tests
+        run: |
+          docker-compose exec -T web python manage.py test
+
+      - name: Stop containers
+        if: always()
+        run: |
+          docker-compose down
