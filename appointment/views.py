@@ -12,7 +12,7 @@ from drf_spectacular.utils import (
     extend_schema_view,
     OpenApiParameter,
 )
-from rest_framework import viewsets, filters, status
+from rest_framework import viewsets, filters, status, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
@@ -103,9 +103,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     action_serializers = {
         "retrieve": AppointmentDetailSerializer,
         "list": AppointmentListSerializer,
-        "cancel": CustomActionSerializer,
-        "completed": CustomActionSerializer,
-        "no-show": CustomActionSerializer,
     }
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -116,6 +113,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     filterset_class = AppointmentFilter
 
     def get_serializer_class(self):
+        if self.action in [
+            "cancel_appointment",
+            "completed_appointment",
+            "no_show_appointment",
+        ]:
+            return serializers.Serializer
         return self.action_serializers.get(self.action, self.serializer_class)
 
     def get_queryset(self):
@@ -301,6 +304,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment.status = appointment.Status.COMPLETED
                 appointment.completed_at = timezone.now()
                 appointment.save()
+
+            # TODO: Validation
 
             return Response(
                 {"message": "Appointment completed"}, status=status.HTTP_200_OK
