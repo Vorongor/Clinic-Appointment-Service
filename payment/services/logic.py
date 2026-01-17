@@ -23,10 +23,12 @@ def process_appointment_payment(appointment, payment_type):
     amount = calculate_payment_amount(appointment, payment_type)
     if amount <= 0:
         return None
-
+    # fmt: off
     session = create_checkout_session(
-        amount_usd=amount, title=f"{payment_type} for Appointment {appointment.id}"
+        amount_usd=amount,
+        title=f"{payment_type} for Appointment {appointment.id}"
     )
+    # fmt: on
 
     return Payment.objects.create(
         appointment=appointment,
