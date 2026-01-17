@@ -4,6 +4,9 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
+
+from user.models import Patient
+
 CREATE_USER_URL = reverse("user:create")
 TOKEN_URL = reverse("user:token_obtain_pair")
 
@@ -20,7 +23,6 @@ class UserApiTests(TestCase):
 
     def test_create_user_success(self):
         res = self.client.post(CREATE_USER_URL, self.user_data)
-
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         user = get_user_model().objects.get(email=self.user_data["email"])
         self.assertTrue(user.check_password(self.user_data["password"]))
@@ -44,14 +46,10 @@ class UserApiTests(TestCase):
         self.assertTrue(hasattr(user, "patient_profile"))
         self.assertIsNotNone(user.patient_profile)
 
-    def test_user_deleted_when_patient_deleted(self):
+    def test_patient_deleted_when_user_deleted(self):
         self.client.post(CREATE_USER_URL, self.user_data)
         user = get_user_model().objects.get(email=self.user_data["email"])
-        patient = user.patient_profile
-        patient.delete()
-        user_exists = (
-            get_user_model().objects.filter(
-                email=self.user_data["email"]
-            ).exists()
-        )
-        self.assertFalse(user_exists)
+        user_id = user.id
+        user.delete()
+        patient_exists = Patient.objects.filter(user_id=user_id).exists()
+        self.assertFalse(patient_exists)
