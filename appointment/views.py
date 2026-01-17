@@ -4,10 +4,13 @@ from django.utils import timezone
 
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiResponse,
-    OpenApiExample
+    OpenApiExample,
+    extend_schema_view,
+    OpenApiParameter,
 )
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
@@ -20,16 +23,75 @@ from appointment.serializers import (
     AppointmentSerializer,
     AppointmentListSerializer,
     AppointmentDetailSerializer,
+    CustomActionSerializer,
 )
 from payment.models import Payment
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="Filtering and searching",
+        description="Searching by doctor last name, patient last name "
+        "Filtering by date-from-to, exact date, patient id, doctor",
+        parameters=[
+            OpenApiParameter(
+                name="search",
+                description="Searching by doctor last name or patient last name",
+                required=False,
+                type=str,
+            ),
+            OpenApiParameter(
+                name="status",
+                type=OpenApiTypes.STR,
+                description="Filtering by status",
+                enum=["BOOKED", "COMPLETED", "CANCELED", "NO_SHOW"],
+            ),
+            OpenApiParameter(
+                name="doctor_id",
+                type=OpenApiTypes.INT,
+                description="For filtering by doctor id",
+            ),
+            OpenApiParameter(
+                name="patient_id",
+                type=OpenApiTypes.INT,
+                description="Filtering by list of patients of exact patient",
+            ),
+            OpenApiParameter(
+                name="date_from",
+                type=OpenApiTypes.DATE,
+                description="Start date(YYYY-MM-DD)",
+            ),
+            OpenApiParameter(
+                name="date_to",
+                type=OpenApiTypes.DATE,
+                description="End date(YYYY-MM-DD)",
+            ),
+            OpenApiParameter(
+                name="date_exact",
+                type=OpenApiTypes.DATE,
+                description="Exact date(YYYY-MM-DD)",
+            ),
+        ],
+    ),
+    create=extend_schema(
+        summary="Booking appointment",
+        description="Creating new appointment. Patient field "
+        "substituted automatically, admin can book "
+        "for anyone",
+    ),
+    retrieve=extend_schema(
+        summary="Retrieving appointment",
+        description="Retrieving appointment. Extended doctor, patient "
+        "description. Additional payment information",
+    ),
+)
 class AppointmentViewSet(viewsets.ModelViewSet):
     """
     Here we implemented: searching, filtering logic,
     getting query set due to permissions (admin, user),
     perform create patient.
-    Custom actions: canceling , completing , no show with transaction logic
+    Custom actions: canceling , completing , no show with
+    signal tracking (changing payment method)
     """
 
     permission_classes = [IsAuthenticated]
@@ -38,13 +100,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     action_serializers = {
         "retrieve": AppointmentDetailSerializer,
         "list": AppointmentListSerializer,
+        "cancel": CustomActionSerializer,
+        "completed": CustomActionSerializer,
+        "no-show": CustomActionSerializer,
     }
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = [
-        "patient__first_name",
         "patient__last_name",
-        "doctor_slot__doctor__first_name",
         "doctor_slot__doctor__last_name",
     ]
     filterset_class = AppointmentFilter
@@ -80,16 +143,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # TODO trigger sed booked
 
     """
-    Cancellation logic with validation and transaction
+    Cancellation logic with validation
     """
 
     @extend_schema(
         summary="Mark appointment as Canceled",
         description=(
-                "Changes the appointment status to CANCELED "
-                "and charging 50% of price from balance if cancelled "
-                "later than 24 hours before the visit."
-                "Allowed for staff and users."
+            "Changes the appointment status to CANCELED "
+            "and charging 50% of price from balance if cancelled "
+            "later than 24 hours before the visit."
+            "Allowed for staff and users."
         ),
         request=None,
         responses={
@@ -100,9 +163,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         "Success response",
                         value={
                             "status": "Success",
-                            "message":
-                                ("Appointment marked as 'Cancelled'."
-                                 "Attempt to withdraw funds from the balance"),
+                            "message": "Appointment cancelled.",
                         },
                     )
                 ],
@@ -113,14 +174,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     OpenApiExample(
                         "Invalid status",
                         value={
-                            "error": "Only BOOKED appointments "
-                                     "can be marked as 'Cancelled'."
+                            "error": "You can't cancel appointment " "with this status"
                         },
                     ),
                 ],
             ),
             503: OpenApiResponse(
-                description="Transaction failed / Server error",
+                description="Server error",
                 examples=[
                     OpenApiExample(
                         "Database error",
@@ -142,9 +202,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         if appointment.status != appointment.Status.BOOKED:
             return Response(
-                {
-                    "error": "You can't cancel appointment with this status"
-                },
+                {"error": "You can't cancel appointment with this status"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -154,8 +212,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment.save()
 
             return Response(
-                {"message": "Appointment cancelled"},
-                status=status.HTTP_200_OK
+                {"message": "Appointment cancelled"}, status=status.HTTP_200_OK
             )
 
         except Exception as e:
@@ -165,15 +222,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
     """
-    Completed mark logic with validation and transaction
+    Completed mark logic with validation
     """
 
     @extend_schema(
         summary="Mark appointment as Completed",
         description=(
-                "Changes the appointment status to COMPLETED"
-                " and charging 100% of price from balance"
-                "Allowed only for staff users."
+            "Changes the appointment status to COMPLETED "
+            "and charging 100% of price from balance."
+            "Allowed only for staff users."
         ),
         request=None,
         responses={
@@ -184,9 +241,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         "Success response",
                         value={
                             "status": "Success",
-                            "message": "Appointment marked as 'Completed'."
-                                       "Attempt to withdraw "
-                                       "funds from the balance",
+                            "message": "Appointment completed",
                         },
                     )
                 ],
@@ -197,15 +252,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     OpenApiExample(
                         "Invalid status",
                         value={
-                            "error": "Only BOOKED appointments "
-                                     "can be marked as 'No Show'."
+                            "error": f"Cannot complete appointment "
+                            "from status: {appointment.status}"
                         },
                     ),
                 ],
             ),
             403: OpenApiResponse(description="Permission Denied (Admin only)"),
             503: OpenApiResponse(
-                description="Server error / Stripe error",
+                description="Server error",
                 examples=[
                     OpenApiExample(
                         "Database error",
@@ -229,7 +284,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {
                     "error": f"Cannot complete appointment "
-                             f"from status: {appointment.status}"
+                    f"from status: {appointment.status}"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -241,8 +296,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment.save()
 
             return Response(
-                {"message": "Appointment completed"},
-                status=status.HTTP_200_OK
+                {"message": "Appointment completed"}, status=status.HTTP_200_OK
             )
 
         except Exception as e:
@@ -252,16 +306,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
     """
-    No show mark logic with validation and transaction
+    No show mark logic with validation
     """
 
     @extend_schema(
         summary="Mark appointment as No-Show",
         description=(
-                "Changes the appointment status to NO_SHOW "
-                "and creates a penalty payment (120%). "
-                "Allowed only for staff users. Can only be "
-                "performed after the appointment start time."
+            "Changes the appointment status to NO_SHOW "
+            "and creates a penalty payment (120%). "
+            "Allowed only for staff users. Can only be "
+            "performed after the appointment start time."
         ),
         request=None,
         responses={
@@ -272,10 +326,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         "Success response",
                         value={
                             "status": "Success",
-                            "message": "Appointment marked as 'No Show'. "
-                                       "120% penalty fee applied."
-                                       "Attempt to withdraw funds "
-                                       "from the balance",
+                            "message": "Appointment marked as 'No Show'",
                         },
                     )
                 ],
@@ -286,29 +337,25 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     OpenApiExample(
                         "Invalid status",
                         value={
-                            "error": "Only BOOKED appointments "
-                                     "can be marked as 'No Show'."
+                            "error": "You can't mark this appointment as " "'No show'"
                         },
                     ),
                     OpenApiExample(
                         "Too early",
                         value={
                             "error": "You cannot mark as 'No Show' "
-                                     "before the appointment time starts."
+                            "before the appointment time starts."
                         },
                     ),
                 ],
             ),
             403: OpenApiResponse(description="Permission Denied (Admin only)"),
             503: OpenApiResponse(
-                description="Transaction failed / Server error",
+                description="Server error",
                 examples=[
                     OpenApiExample(
                         "Database error",
-                        value={
-                            "error":
-                                "Transaction failed: Database connection lost"
-                        },
+                        value={"error": "Database connection lost"},
                     )
                 ],
             ),
@@ -334,7 +381,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(
                 {
                     "error": "You cannot mark as 'No Show' "
-                             "before the appointment time starts."
+                    "before the appointment time starts."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -345,8 +392,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment.save()
 
             return Response(
-                "Appointment marked as 'No Show'",
-                status=status.HTTP_200_OK
+                "Appointment marked as 'No Show'", status=status.HTTP_200_OK
             )
 
         except Exception as e:

@@ -25,7 +25,7 @@ class AppointmentFilter(filters.FilterSet):
         field_name="patient_id",
         label="Patient ID",
     )
-    doctor = filters.NumberFilter(
+    doctor_id = filters.NumberFilter(
         field_name="doctor_slot__doctor_id",
         label="Doctor ID",
     )
@@ -41,6 +41,6 @@ class AppointmentFilter(filters.FilterSet):
             "booked_to",
             "booked_exact",
             "patient_id",
-            "doctor",
+            "doctor_id",
             "status",
         ]

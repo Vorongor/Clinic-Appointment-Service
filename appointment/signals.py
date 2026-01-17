@@ -62,12 +62,9 @@ def create_payment_signal_handler(sender, instance, created, **kwargs):
             has_penalty = instance.payments.filter(
                 payment_type=Payment.Type.CANCELLATION_FEE
             ).exists()
-            if instance.doctor_slot and instance.doctor_slot.start:
-                time_until_start = instance.doctor_slot.start - timezone.now()
-                if timedelta(seconds=0) < time_until_start < timedelta(hours=24):
-                    if not has_penalty:
-                        transaction.on_commit(
-                            lambda: create_stripe_payment_task.delay(
-                                instance.id, Payment.Type.CANCELLATION_FEE
-                            )
-                        )
+            if not has_penalty:
+                transaction.on_commit(
+                    lambda: create_stripe_payment_task.delay(
+                        instance.id, Payment.Type.CANCELLATION_FEE
+                    )
+                )
