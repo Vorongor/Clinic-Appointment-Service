@@ -1,13 +1,18 @@
 import stripe
 from celery import shared_task
-from celery.utils.time import timezone
+from django.conf import settings
+from datetime import timedelta
+
+from django.utils import timezone
 
 from appointment.models import Appointment
 from payment.models import Payment
 from payment.services.logic import process_appointment_payment
 import logging
 
+
 logger = logging.getLogger(__name__)
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 @shared_task(bind=True, max_retries=5)
@@ -27,16 +32,31 @@ def create_stripe_payment_task(self, appointment_id, payment_type_value):
 @shared_task
 def sync_pending_payments():
     pending_payments = Payment.objects.filter(
-        status="PENDING",
-        created_at__lt=timezone.now() - timezone.timedelta(minutes=15)
+        status=Payment.Status.PENDING,
+        created_at__lt=timezone.now() - timedelta(minutes=15)
     )
 
     for payment in pending_payments:
-        stripe_session = stripe.checkout.Session.retrieve(payment.session_id)
+        try:
+            if not payment.session_id:
+                logger.warning(
+                    f"Payment {payment.id} has no session_id. Skipping.")
+                continue
 
-        if stripe_session.payment_status == "paid":
-            payment.status = "PAID"
-            payment.save()
-        elif stripe_session.status == "expired":
-            payment.status = "EXPIRED"
-            payment.save()
+            stripe_session = stripe.checkout.Session.retrieve(
+                payment.session_id
+            )
+
+            if stripe_session.payment_status == "paid":
+                payment.status = Payment.Status.PAID
+                payment.save()
+            elif stripe_session.status == "expired":
+                payment.status = Payment.Status.EXPIRED
+                payment.save()
+            else:
+                logger.info(
+                    f"Payment {payment.id} still pending in "
+                    f"Stripe (open/no_payment_required)")
+
+        except Exception as e:
+            logger.error(f"Error processing payment {payment.id}: {str(e)}")
