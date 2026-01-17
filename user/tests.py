@@ -49,6 +49,7 @@ class UserApiTests(TestCase):
     def test_patient_deleted_when_user_deleted(self):
         self.client.post(CREATE_USER_URL, self.user_data)
         user = get_user_model().objects.get(email=self.user_data["email"])
+        user_id = user.id
         user.delete()
-        patient_exists = Patient.objects.filter(user=user).exists()
+        patient_exists = Patient.objects.filter(user_id=user_id).exists()
         self.assertFalse(patient_exists)
