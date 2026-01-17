@@ -12,19 +12,13 @@ from ..serializers import DoctorSlotSerializer
 class DoctorSlotTests(TestCase):
     def setUp(self):
         self.doctor = Doctor.objects.create(
-            first_name="John",
-            last_name="Doe",
-            price_per_visit=100
+            first_name="John", last_name="Doe", price_per_visit=100
         )
 
     def test_str_representation(self):
         start = timezone.now()
         end = start + timezone.timedelta(hours=1)
-        slot = DoctorSlot.objects.create(
-            doctor=self.doctor,
-            start=start,
-            end=end
-        )
+        slot = DoctorSlot.objects.create(doctor=self.doctor, start=start, end=end)
         s = str(slot)
         self.assertIn(f"Slot #{slot.id}", s)
         self.assertIn("Doctor - John Doe", s)
@@ -61,14 +55,10 @@ class DoctorSlotTests(TestCase):
         later = now + timezone.timedelta(hours=2)
         earlier = now - timezone.timedelta(hours=2)
         s1 = DoctorSlot.objects.create(
-            doctor=self.doctor,
-            start=later,
-            end=later+timezone.timedelta(hours=1)
+            doctor=self.doctor, start=later, end=later + timezone.timedelta(hours=1)
         )
         s2 = DoctorSlot.objects.create(
-            doctor=self.doctor,
-            start=earlier,
-            end=earlier+timezone.timedelta(hours=1)
+            doctor=self.doctor, start=earlier, end=earlier + timezone.timedelta(hours=1)
         )
         qs = list(DoctorSlot.objects.all())
         self.assertEqual(qs, [s2, s1])
@@ -78,13 +68,10 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
     def setUp(self):
         User = get_user_model()
         self.admin_user = User.objects.create_superuser(
-            email="admin@example.com",
-            password="adminpass"
+            email="admin@example.com", password="adminpass"
         )
         self.doctor = Doctor.objects.create(
-            first_name="Jane",
-            last_name="Smith",
-            price_per_visit=150
+            first_name="Jane", last_name="Smith", price_per_visit=150
         )
         self.client = APIClient()
         self.url = f"/api/doctors/{self.doctor.pk}/slots/"
@@ -194,8 +181,7 @@ class DoctorSlotBulkCreateAPITests(APITestCase):
         """POST by non-admin user returns 403."""
         User = get_user_model()
         non_admin_user = User.objects.create_user(
-            email="user@example.com",
-            password="userpass"
+            email="user@example.com", password="userpass"
         )
         self.client.force_authenticate(user=non_admin_user)
         start = timezone.now()

@@ -69,7 +69,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         if is_taken:
             raise serializers.ValidationError(
-                {"doctor_slot": "This slot is already " "booked by another patient."}
+                {
+                    "doctor_slot":
+                        "This slot is already booked by another patient."
+                }
             )
 
         # has_debt = Payment.objects.filter(

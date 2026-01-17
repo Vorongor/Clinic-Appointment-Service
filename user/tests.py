@@ -31,7 +31,7 @@ class UserApiTests(TestCase):
 
         payload = {
             "email": self.user_data["email"],
-            "password": self.user_data["password"]
+            "password": self.user_data["password"],
         }
         res = self.client.post(TOKEN_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -49,7 +49,9 @@ class UserApiTests(TestCase):
         user = get_user_model().objects.get(email=self.user_data["email"])
         patient = user.patient_profile
         patient.delete()
-        user_exists = get_user_model().objects.filter(
-            email=self.user_data["email"]
-        ).exists()
+        user_exists = (
+            get_user_model().objects.filter(
+                email=self.user_data["email"]
+            ).exists()
+        )
         self.assertFalse(user_exists)

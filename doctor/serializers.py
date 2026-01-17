@@ -7,8 +7,7 @@ from specializations.models import Specialization
 
 class DoctorSerializer(serializers.ModelSerializer):
     specializations = serializers.PrimaryKeyRelatedField(
-        queryset=Specialization.objects.all(),
-        many=True
+        queryset=Specialization.objects.all(), many=True
     )
 
     class Meta:
@@ -32,7 +31,7 @@ class DoctorSlotListSerializer(serializers.ListSerializer):
                 slots.append((start, end))
 
         for i, (start1, end1) in enumerate(slots):
-            for j, (start2, end2) in enumerate(slots): # noqa VNE001
+            for j, (start2, end2) in enumerate(slots):  # noqa VNE001
                 if i != j and start1 < end2 and start2 < end1:
                     raise serializers.ValidationError(
                         "Slots in the list overlap with each other."
@@ -59,13 +58,12 @@ class DoctorSlotSerializer(serializers.ModelSerializer):
         if start and end and start >= end:
             raise serializers.ValidationError("start must be before end")
 
-        doctor = data.get("doctor") or \
-            (self.instance.doctor if self.instance else None)
+        doctor = data.get("doctor") or (
+            self.instance.doctor if self.instance else None
+        )
         if doctor and start and end:
             overlapping = DoctorSlot.objects.filter(
-                doctor=doctor,
-                start__lt=end,
-                end__gt=start
+                doctor=doctor, start__lt=end, end__gt=start
             ).exclude(pk=self.instance.pk if self.instance else None)
             if overlapping.exists():
                 raise serializers.ValidationError(
@@ -88,17 +86,15 @@ class DoctorSlotIntervalSerializer(serializers.Serializer):
     """
     Serializer for bulk creating slots from time intervals.
     """
+
     interval_start = serializers.DateTimeField(
-        required=True,
-        help_text="Start time of the interval"
+        required=True, help_text="Start time of the interval"
     )
     interval_end = serializers.DateTimeField(
-        required=True,
-        help_text="End time of the interval"
+        required=True, help_text="End time of the interval"
     )
     duration = serializers.IntegerField(
-        required=True,
-        help_text="Slot duration in minutes"
+        required=True, help_text="Slot duration in minutes"
     )
 
     def validate(self, data):

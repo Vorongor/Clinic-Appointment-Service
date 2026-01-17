@@ -8,7 +8,12 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = (
-            "id", "email", "password", "first_name", "last_name", "is_staff"
+            "id",
+            "email",
+            "password",
+            "first_name",
+            "last_name",
+            "is_staff"
         )
         read_only_fields = ("id", "is_staff")
         extra_kwargs = {
@@ -38,6 +43,11 @@ class PatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = (
-            "id", "user", "email", "birth_date", "phone_number", "gender"
+            "id",
+            "user",
+            "email",
+            "birth_date",
+            "phone_number",
+            "gender"
         )
         read_only_fields = ("id", "user")

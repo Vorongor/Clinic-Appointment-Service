@@ -25,4 +25,5 @@ def check_no_shows_daily():
 
     no_show_appointments.update(status=Appointment.Status.NO_SHOW)
 
-    send_telegram_message(f"Daily update: {count} appointment(s) marked as NO_SHOW")
+    send_telegram_message(f"Daily update: {count} "
+                          f"appointment(s) marked as NO_SHOW")

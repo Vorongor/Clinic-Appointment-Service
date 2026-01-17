@@ -6,8 +6,7 @@ from appointment.models import Appointment
 
 class DoctorFilter(django_filters.FilterSet):
     specializations = django_filters.CharFilter(
-        field_name="specializations__name",
-        lookup_expr="icontains"
+        field_name="specializations__name", lookup_expr="icontains"
     )
 
     class Meta:
@@ -17,18 +16,13 @@ class DoctorFilter(django_filters.FilterSet):
 
 class DoctorSlotFilter(django_filters.FilterSet):
     from_date = django_filters.DateTimeFilter(
-        field_name="start",
-        lookup_expr="gte",
-        label="From Date"
+        field_name="start", lookup_expr="gte", label="From Date"
     )
     to_date = django_filters.DateTimeFilter(
-        field_name="end",
-        lookup_expr="lte",
-        label="To Date"
+        field_name="end", lookup_expr="lte", label="To Date"
     )
     available_only = django_filters.BooleanFilter(
-        method="filter_available_only",
-        label="Available Only"
+        method="filter_available_only", label="Available Only"
     )
 
     def filter_available_only(self, queryset, name, value):

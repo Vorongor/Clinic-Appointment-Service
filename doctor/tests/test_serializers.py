@@ -27,7 +27,7 @@ class DoctorSerializerTests(TestCase):
             "first_name": "Jane",
             "last_name": "Smith",
             "price_per_visit": "75.00",
-            "specializations": [self.specialization.id]
+            "specializations": [self.specialization.id],
         }
         serializer = DoctorSerializer(data=data)
         self.assertTrue(serializer.is_valid())
@@ -41,7 +41,7 @@ class DoctorSerializerTests(TestCase):
         data = {
             "last_name": "Smith",
             "price_per_visit": "75.00",
-            "specializations": [self.specialization.id]
+            "specializations": [self.specialization.id],
         }
         serializer = DoctorSerializer(data=data)
         self.assertFalse(serializer.is_valid())
