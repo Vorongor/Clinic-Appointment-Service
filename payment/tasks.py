@@ -1,7 +1,9 @@
 import stripe
 from celery import shared_task
 from django.conf import settings
-from datetime import datetime, timedelta
+from datetime import timedelta
+
+from django.utils import timezone
 
 from appointment.models import Appointment
 from payment.models import Payment
@@ -31,7 +33,7 @@ def create_stripe_payment_task(self, appointment_id, payment_type_value):
 def sync_pending_payments():
     pending_payments = Payment.objects.filter(
         status=Payment.Status.PENDING,
-        created_at__lt=datetime.now() - timedelta(minutes=15)
+        created_at__lt=timezone.now() - timedelta(minutes=15)
     )
 
     for payment in pending_payments:
