@@ -111,3 +111,10 @@ class AppointmentListSerializer(AppointmentSerializer):
         if last_payment:
             return last_payment.status
         return None
+
+
+class CustomActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = ("id", "doctor_slot", "patient", "status")
+        read_only_fields = fields
