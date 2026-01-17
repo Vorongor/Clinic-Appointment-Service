@@ -1,8 +1,7 @@
 import stripe
 from celery import shared_task
-from django.conf import settings
 from datetime import timedelta
-
+from django.conf import settings
 from django.utils import timezone
 
 from appointment.models import Appointment
