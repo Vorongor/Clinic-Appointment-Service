@@ -3,10 +3,13 @@ from rest_framework import serializers
 from django.utils.translation import gettext_lazy as _
 from .models import Patient
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        fields = ("id", "email", "password", "first_name", "last_name", "is_staff")
+        fields = (
+            "id", "email", "password", "first_name", "last_name", "is_staff"
+        )
         read_only_fields = ("id", "is_staff")
         extra_kwargs = {
             "password": {
@@ -28,10 +31,13 @@ class UserSerializer(serializers.ModelSerializer):
             user.save()
         return user
 
+
 class PatientSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
         model = Patient
-        fields = ("id", "user", "email", "birth_date", "phone_number", "gender")
+        fields = (
+            "id", "user", "email", "birth_date", "phone_number", "gender"
+        )
         read_only_fields = ("id", "user")

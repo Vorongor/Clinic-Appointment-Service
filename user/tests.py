@@ -41,13 +41,15 @@ class UserApiTests(TestCase):
     def test_patient_profile_created_automatically(self):
         self.client.post(CREATE_USER_URL, self.user_data)
         user = get_user_model().objects.get(email=self.user_data["email"])
-        self.assertTrue(hasattr(user, 'patient_profile'))
+        self.assertTrue(hasattr(user, "patient_profile"))
         self.assertIsNotNone(user.patient_profile)
 
     def test_user_deleted_when_patient_deleted(self):
-        res = self.client.post(CREATE_USER_URL, self.user_data)
+        self.client.post(CREATE_USER_URL, self.user_data)
         user = get_user_model().objects.get(email=self.user_data["email"])
         patient = user.patient_profile
         patient.delete()
-        user_exists = get_user_model().objects.filter(email=self.user_data["email"]).exists()
+        user_exists = get_user_model().objects.filter(
+            email=self.user_data["email"]
+        ).exists()
         self.assertFalse(user_exists)

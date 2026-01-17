@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -24,6 +25,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", True)
         return self._create_user(email, password, **extra_fields)
 
+
 class User(AbstractUser):
     username = None
     email = models.EmailField(_("email address"), unique=True)
@@ -37,6 +39,7 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
 
 class Patient(models.Model):
     GENDER_CHOICES = [
@@ -54,4 +57,7 @@ class Patient(models.Model):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
 
     def __str__(self):
-        return f"{self.user.first_name} {self.user.last_name} ({self.user.email})"
+        return (
+            f"{self.user.first_name} {self.user.last_name} "
+            f"({self.user.email})"
+        )
