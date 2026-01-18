@@ -13,7 +13,6 @@ from .serializers import (
     DoctorSlotIntervalSerializer,
 )
 from .filters import DoctorFilter, DoctorSlotFilter
-from appointment.models import Appointment
 
 
 class DoctorViewSet(viewsets.ModelViewSet):
@@ -26,24 +25,38 @@ class DoctorViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="List doctors",
         description="Retrieve a list of doctors. "
-                    "Filter by specialization name using the "
-                    "'specializations' query parameter.",
+                    "Filter by specialization code or id using the "
+                    "'specialization' query parameter.",
         parameters=[
             OpenApiParameter(
-                name="specializations",
+                name="specialization",
                 type=OpenApiTypes.STR,
-                description="Filter doctors by specialization name(icontains)",
+                description="Filter doctors by specialization code or id",
             ),
         ],
     )
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        queryset = self.filter_queryset(
+            self.get_queryset().prefetch_related("specializations")
+        )
+        queryset = queryset.distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
-class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
+class DoctorSlotNestedViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet
+):
     """
     Nested viewset for /doctors/<doctor_id>/slots/
-    Supports GET list (with filters) and POST bulk-create via intervals.
+    Supports GET list (with filters), POST bulk-create via intervals, and DELETE.
     """
 
     serializer_class = DoctorSlotIntervalSerializer
@@ -169,9 +182,32 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
         out_serializer = DoctorSlotSerializer(created, many=True)
         return Response(out_serializer.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        summary="Delete a doctor slot",
+        description="Delete a slot if it has no associated appointments.",
+        responses={
+            204: None,
+            400: {
+                "description": "Cannot delete slot "
+                               "with existing appointments"},
+        },
+    )
+    def destroy(self, request, doctor_pk=None, pk=None):
+        slot = self.get_object()
+        if slot.appointments.exists():
+            return Response(
+                {"detail": "Cannot delete slot with existing "
+                           "appointments"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        slot.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class DoctorSlotViewSet(
-    mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
     viewsets.GenericViewSet
 ):
     """
@@ -201,7 +237,7 @@ class DoctorSlotViewSet(
     )
     def destroy(self, request, pk=None):
         slot = self.get_object()
-        if slot.appointments.exists():
+        if slot.appointment.exists():
             return Response(
                 {"detail": "Cannot delete slot with existing "
                            "appointments"},
