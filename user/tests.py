@@ -69,17 +69,20 @@ class PatientStatusTests(TestCase):
             first_name="Ivan",
             last_name="Ivanov"
         )
+
         self.patient = self.user.patient_profile
         self.doctor = Doctor.objects.create(
             first_name="Doctor",
             last_name="House",
             price_per_visit=500.00
         )
+
         self.slot = DoctorSlot.objects.create(
             doctor=self.doctor,
             start=timezone.now(),
             end=timezone.now() + timedelta(hours=1)
         )
+
         self.appointment = Appointment.objects.create(
             patient=self.user,
             doctor_slot=self.slot
@@ -100,12 +103,12 @@ class PatientStatusTests(TestCase):
         )
         self.assertEqual(float(self.patient.total_unpaid_amount), 650.00)
 
-    def test_has_active_penalties_logic(self):
-        self.assertFalse(self.patient.has_active_penalties)
+    def test_has_penalty_logic(self):
+        self.assertFalse(self.user.has_penalty)
         Payment.objects.create(
             appointment=self.appointment,
             status=Payment.Status.PENDING,
-            payment_type=Payment.Type.NO_SHOW_FEE,
+            payment_type=Payment.Type.CONSULTATION,
             money_to_pay="100.00"
         )
-        self.assertTrue(self.patient.has_active_penalties)
+        self.assertTrue(self.user.has_penalty)

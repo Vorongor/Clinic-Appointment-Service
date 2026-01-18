@@ -47,7 +47,7 @@ class PatientAdmin(admin.ModelAdmin):
         "phone_number",
         "birth_date",
         "total_unpaid_amount",
-        "has_active_penalties",
+        "has_penalty",
     )
     list_filter = ("gender",)
     search_fields = (
@@ -62,5 +62,5 @@ class PatientAdmin(admin.ModelAdmin):
         return obj.total_unpaid_amount
 
     @admin.display(description="Has Penalties", boolean=True)
-    def has_active_penalties(self, obj):
-        return obj.has_active_penalties
+    def has_penalty(self, obj):
+        return obj.user.has_penalty
