@@ -61,7 +61,7 @@ class Patient(models.Model):
         from django.db.models import Sum
 
         unpaid_payments = Payment.objects.filter(
-            appointment__patient=self,
+            appointment__patient=self.user,
             status=Payment.Status.PENDING
         )
         result = unpaid_payments.aggregate(total=Sum("money_to_pay"))
@@ -72,7 +72,7 @@ class Patient(models.Model):
         from payment.models import Payment
 
         return Payment.objects.filter(
-            appointment__patient=self,
+            appointment__patient=self.user,
             status=Payment.Status.PENDING,
             payment_type__in=[
                 Payment.Type.CANCELLATION_FEE,
