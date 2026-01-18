@@ -27,7 +27,8 @@ def renew_payment_session(payment: Payment) -> Payment:
                 payment.save(update_fields=["status"])
                 return payment
 
-            if getattr(stripe_session, "status", None) == "open" and stripe_session.url:
+            if (getattr(stripe_session, "status", None) == "open"
+                    and stripe_session.url):
                 if payment.session_url != stripe_session.url:
                     payment.session_url = stripe_session.url
                     payment.save(update_fields=["session_url"])

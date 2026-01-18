@@ -17,7 +17,6 @@ from payment.serializers import PaymentSerializer
 from payment.services.logic import renew_payment_session
 
 
-
 @method_decorator(csrf_exempt, name="dispatch")
 @extend_schema(tags=["Payments"])
 class StripeWebhookView(APIView):
@@ -145,7 +144,8 @@ class PaymentViewSet(ReadOnlyModelViewSet):
         summary="Renew Stripe Checkout session",
         description=(
                 "Creates a new Stripe Checkout session for an existing Payment. "
-                "Use this when the previous session expired or the user lost the link. "
+                "Use this when the previous session expired"
+                "or the user lost the link. "
                 "Paid payments can't be renewed."
         ),
         request=None,
