@@ -15,7 +15,7 @@ class DoctorFilter(django_filters.FilterSet):
         if not value:
             return queryset
 
-        items = [v.strip() for v in value.split(',') if v.strip()]
+        items = [v.strip() for v in value.split(",") if v.strip()]
         ids = []
         codes = []
 
@@ -26,7 +26,7 @@ class DoctorFilter(django_filters.FilterSet):
                 codes.append(item)
 
         return queryset.filter(
-            Q(specializations__id__in=ids) |
+            Q(specializations__id__in=ids) | # noqa W504
             Q(specializations__code__in=codes)
         ).distinct()
 
