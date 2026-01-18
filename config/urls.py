@@ -1,26 +1,38 @@
 from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import (
-    SpectacularAPIView,
     SpectacularSwaggerView,
+    SpectacularAPIView,
     SpectacularRedocView,
 )
+from rest_framework.permissions import AllowAny
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", include("controller.urls")),
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    # Optional UI:
+    path(
+        "api/schema/",
+        SpectacularAPIView.as_view(permission_classes=[AllowAny]),
+        name="schema",
+    ),
     path(
         "api/schema/swagger-ui/",
-        SpectacularSwaggerView.as_view(url_name="schema"),
+        SpectacularSwaggerView.as_view(
+            permission_classes=[AllowAny], url_name="schema"
+        ),
         name="swagger-ui",
     ),
     path(
         "api/schema/redoc/",
-        SpectacularRedocView.as_view(url_name="schema"),
+        SpectacularRedocView.as_view(
+            permission_classes=[AllowAny],
+            url_name="schema"
+        ),
         name="redoc",
     ),
-    path("api/", include("specializations.urls")),
+    path("api/user/", include("user.urls", namespace="user")),
     path("api/", include("doctor.urls")),
+    path("api/appointments/", include("appointment.urls")),
+    path("api/specializations/", include("specializations.urls")),
+    path("api/payments/", include("payment.urls")),
 ]
