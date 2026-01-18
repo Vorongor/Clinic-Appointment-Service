@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import timedelta
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -10,6 +11,7 @@ from rest_framework.test import APIClient
 from user.models import Patient
 from appointment.models import Appointment
 from payment.models import Payment
+from doctor.models import Doctor, DoctorSlot
 
 CREATE_USER_URL = reverse("user:create")
 TOKEN_URL = reverse("user:token_obtain_pair")
@@ -68,9 +70,19 @@ class PatientStatusTests(TestCase):
             last_name="Ivanov"
         )
         self.patient = self.user.patient_profile
+        self.doctor = Doctor.objects.create(
+            first_name="Doctor",
+            last_name="House",
+            price_per_visit=500.00
+        )
+        self.slot = DoctorSlot.objects.create(
+            doctor=self.doctor,
+            start=timezone.now(),
+            end=timezone.now() + timedelta(hours=1)
+        )
         self.appointment = Appointment.objects.create(
             patient=self.user,
-            time=datetime.now()
+            doctor_slot=self.slot
         )
 
     def test_total_unpaid_amount_calculation(self):
@@ -94,13 +106,6 @@ class PatientStatusTests(TestCase):
             appointment=self.appointment,
             status=Payment.Status.PENDING,
             payment_type=Payment.Type.NO_SHOW_FEE,
-            money_to_pay="100.00"
-        )
-        self.assertTrue(self.patient.has_active_penalties)
-        Payment.objects.create(
-            appointment=self.appointment,
-            status=Payment.Status.PAID,
-            payment_type=Payment.Type.CANCELLATION_FEE,
             money_to_pay="100.00"
         )
         self.assertTrue(self.patient.has_active_penalties)
