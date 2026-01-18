@@ -171,7 +171,7 @@ class DoctorSlotNestedViewSet(viewsets.GenericViewSet):
 
 
 class DoctorSlotViewSet(
-    mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
     viewsets.GenericViewSet
 ):
     """
