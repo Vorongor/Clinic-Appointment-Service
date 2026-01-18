@@ -2,6 +2,8 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from payment.models import Payment
+
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
@@ -37,6 +39,17 @@ class User(AbstractUser):
 
     objects = UserManager()
 
+    @property
+    def has_penalty(self):
+        """
+        return True if user has pending payment
+        """
+        has_pending = self.appointments.filter(
+            payments__status=Payment.Status.PENDING
+        ).exists()
+
+        return has_pending
+
     def __str__(self):
         return self.email
 
@@ -48,14 +61,15 @@ class Patient(models.Model):
     ]
 
     user = models.OneToOneField(
-        User, on_delete=models.CASCADE,
-        related_name="patient_profile"
+        User, on_delete=models.CASCADE, related_name="patient_profile"
     )
     birth_date = models.DateField(null=True, blank=True)
     phone_number = models.CharField(max_length=20, blank=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
 
     def __str__(self):
-        return (f"{self.user.first_name} "
-                f"{self.user.last_name} "
-                f"({self.user.email})")
+        return (
+            f"{self.user.first_name} "
+            f"{self.user.last_name} "
+            f"({self.user.email})"
+        )
