@@ -14,6 +14,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from payment.models import Payment
 from payment.serializers import PaymentSerializer
+from payment.services.logic import renew_payment_session
+
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -138,3 +140,29 @@ class PaymentViewSet(ReadOnlyModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @extend_schema(
+        summary="Renew Stripe Checkout session",
+        description=(
+                "Creates a new Stripe Checkout session for an existing Payment. "
+                "Use this when the previous session expired or the user lost the link. "
+                "Paid payments can't be renewed."
+        ),
+        request=None,
+        responses={200: PaymentSerializer, 400: None, 404: None},
+    )
+    @action(detail=True, methods=["post"], url_path="renew")
+    def renew(self, request, pk=None):
+        payment = self.get_object()
+
+        try:
+            payment = renew_payment_session(payment)
+        except ValueError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as err:
+            return Response(
+                {"detail": f"Failed to renew payment session: {err}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(PaymentSerializer(payment).data, status=status.HTTP_200_OK)

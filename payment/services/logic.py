@@ -11,6 +11,49 @@ from payment.services.stripe_checkout import create_checkout_session
 logger = logging.getLogger(__name__)
 
 
+def renew_payment_session(payment: Payment) -> Payment:
+    if payment.status == Payment.Status.PAID:
+        raise ValueError("Paid payments can't be renewed")
+
+    if payment.money_to_pay <= 0:
+        raise ValueError("Nothing to pay for this payment")
+
+    if payment.session_id:
+        try:
+            stripe_session = stripe.checkout.Session.retrieve(payment.session_id)
+
+            if getattr(stripe_session, "payment_status", None) == "paid":
+                payment.status = Payment.Status.PAID
+                payment.save(update_fields=["status"])
+                return payment
+
+            if getattr(stripe_session, "status", None) == "open" and stripe_session.url:
+                if payment.session_url != stripe_session.url:
+                    payment.session_url = stripe_session.url
+                    payment.save(update_fields=["session_url"])
+                return payment
+
+        except Exception:
+            pass
+
+    new_session = create_checkout_session(
+        amount_usd=payment.money_to_pay,
+        title=f"{payment.payment_type} for Appointment {payment.appointment_id}",
+    )
+
+    if payment.session_id and payment.session_id != new_session.id:
+        try:
+            stripe.checkout.Session.expire(payment.session_id)
+        except Exception:
+            pass
+
+    payment.session_id = new_session.id
+    payment.session_url = new_session.url
+    payment.status = Payment.Status.PENDING
+    payment.save(update_fields=["session_id", "session_url", "status"])
+    return payment
+
+
 def calculate_payment_amount(appointment, payment_type):
     price = appointment.price
     if payment_type == Payment.Type.CONSULTATION:
