@@ -1,17 +1,38 @@
 import django_filters
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Q
+
 from .models import Doctor, DoctorSlot
 from appointment.models import Appointment
 
 
 class DoctorFilter(django_filters.FilterSet):
     specializations = django_filters.CharFilter(
-        field_name="specializations__name", lookup_expr="icontains"
+        method="filter_specializations",
+        label="Specializations (IDs or codes, comma-separated)"
     )
+
+    def filter_specializations(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        items = [v.strip() for v in value.split(",") if v.strip()]
+        ids = []
+        codes = []
+
+        for item in items:
+            if item.isdigit():
+                ids.append(int(item))
+            else:
+                codes.append(item)
+
+        return queryset.filter(
+            Q(specializations__id__in=ids) | # noqa W504
+            Q(specializations__code__in=codes)
+        ).distinct()
 
     class Meta:
         model = Doctor
-        fields = ["specializations"]
+        fields = []
 
 
 class DoctorSlotFilter(django_filters.FilterSet):
