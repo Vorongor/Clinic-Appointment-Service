@@ -4,11 +4,15 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
 class Command(BaseCommand):
-    help = "Makes fake appointments to trigger telegram notifications"
+    """Makes fake appointments to trigger telegram notifications"""
 
     def add_arguments(self, parser):
-        parser.add_argument("total", type=int, help="How many appointments to create")
+        parser.add_argument(
+            "total",
+            type=int,
+            help="How many appointments to create")
 
     def handle(self, *args, **kwargs):
         total = kwargs["total"]
@@ -26,4 +30,5 @@ class Command(BaseCommand):
                 patient=patient,
                 status="Booked"
             )
-            self.stdout.write(f"Made an appointment #{app.id} to {slot.doctor}")
+            self.stdout.write(f"Made an appointment #{app.id} "
+                              f"to {slot.doctor}")

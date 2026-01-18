@@ -54,12 +54,13 @@ def appointment_notification_signal(sender, instance, created, **kwargs):
         send_appointment_msg(instance, "created")
         return
 
-    old_status = getattr(instance, '_old_status', None)
+    old_status = getattr(instance, "_old_status", None)
 
     if old_status != instance.status:
         send_appointment_msg(instance, "updated")
     else:
         pass
+
 
 def send_appointment_msg(instance, event):
     dto = AppointmentDTO(
@@ -90,9 +91,11 @@ def payment_notification_signal(sender, instance, created, **kwargs):
         return
 
     icon = "✅" if status_type == "success" else "❌"
-    msg_title = "Оплата отримана" if status_type == "success" else "Оплата відмінена"
+    msg_title = ("Оплата отримана" if status_type == "success"
+                 else "Оплата відмінена")
 
-    patient_name = f"{instance.appointment.patient.first_name} {instance.appointment.patient.last_name}"
+    patient_name = (f"{instance.appointment.patient.first_name} "
+                    f"{instance.appointment.patient.last_name}")
 
     message = (
         f"{icon} **{msg_title}**\n"

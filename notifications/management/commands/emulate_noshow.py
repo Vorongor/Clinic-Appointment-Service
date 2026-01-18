@@ -9,7 +9,7 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = "Emulate expired records and run the check_no_shows_daily task"
+    """Emulate expired records and run the check_no_shows_daily task"""
 
     def handle(self, *args, **kwargs):
         self.stdout.write("Prepare data for No-Show test...")
@@ -18,7 +18,9 @@ class Command(BaseCommand):
         doctor_slot = DoctorSlot.objects.first()
 
         if not doctor_slot:
-            self.stdout.write(self.style.ERROR("Make at least one slot for creation!"))
+            self.stdout.write(self.style.ERROR(
+                "Make at least one slot for creation!"
+            ))
             return
 
         past_start = timezone.now() - timedelta(hours=2)
@@ -36,7 +38,10 @@ class Command(BaseCommand):
             status=Appointment.Status.BOOKED
         )
 
-        self.stdout.write(self.style.SUCCESS(f"An expired entry has been created #{appt.id} (Ended in {past_end})"))
+        self.stdout.write(self.style.SUCCESS(
+            f"An expired entry has been created #{appt.id} "
+            f"(Ended in {past_end})"
+        ))
 
         self.stdout.write("Running a task check_no_shows_daily...")
         check_no_shows_daily()
