@@ -5,6 +5,7 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from appointment.models import Appointment
 from doctor.models import DoctorSlot, Doctor
+from payment.models import Payment
 
 User = get_user_model()
 
@@ -40,6 +41,13 @@ class AppointmentCreateAPITests(APITestCase):
             start=self.future_start,
             end=self.future_start + timezone.timedelta(minutes=30),
         )
+        self.future_start_2 = timezone.now() + timezone.timedelta(days=2)
+        self.slot_2 = DoctorSlot.objects.create(
+            doctor=self.doctor,
+            start=self.future_start_2,
+            end=self.future_start_2 + timezone.timedelta(minutes=30),
+        )
+
 
     def test_patient_can_create_appointment_for_self(self):
         """
@@ -103,9 +111,6 @@ class AppointmentCreateAPITests(APITestCase):
         Appointment.objects.create(
             doctor_slot=self.slot,
             patient=self.patient_user,
-            booked_at=self.slot.start,
-            price=self.doctor.price_per_visit,
-            status="BOOKED",
         )
 
         self.client.force_authenticate(user=self.patient_user)
@@ -114,3 +119,33 @@ class AppointmentCreateAPITests(APITestCase):
         response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_if_user_has_penalty(self):
+        appointment = Appointment.objects.create(
+            doctor_slot=self.slot,
+            patient=self.patient_user,
+            status="COMPLETED",
+        )
+
+        Payment.objects.create(
+            appointment=appointment,
+            status="PENDING",
+            payment_type="CONSULTATION",
+            session_id="test_session_id",
+            money_to_pay=self.doctor.price_per_visit,
+        )
+
+        self.client.force_authenticate(user=self.patient_user)
+
+        url = reverse("appointment-list")
+        data = {
+            "doctor_slot": self.slot_2.id,
+        }
+
+        response = self.client.post(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn(
+            "You cannot book a new appointment until you pay pending invoices.",
+            str(response.data)
+        )
