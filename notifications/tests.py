@@ -31,7 +31,7 @@ class NotificationsTest(TestCase):
             end=timezone.now() + timedelta(days=1, hours=1)
         )
 
-    @patch('notifications.tasks.notify_admin_task.delay')
+    @patch("notifications.tasks.notify_admin_task.delay")
     def test_signal_create_appointment(self, mock_notify_task):
         Appointment.objects.create(
             doctor_slot=self.slot,
@@ -40,7 +40,7 @@ class NotificationsTest(TestCase):
         )
         mock_notify_task.assert_called()
 
-    @patch('notifications.tasks.notify_admin_task.delay')
+    @patch("notifications.tasks.notify_admin_task.delay")
     def test_signal_update_status_sends_notification(self, mock_notify_task):
         appt = Appointment.objects.create(
             doctor_slot=self.slot,
@@ -52,7 +52,7 @@ class NotificationsTest(TestCase):
         appt.save()
         self.assertTrue(mock_notify_task.called)
 
-    @patch('notifications.tasks.notify_admin_task.delay')
+    @patch("notifications.tasks.notify_admin_task.delay")
     def test_signal_no_notification_if_status_unchanged(self, mock_notify_task):
         appt = Appointment.objects.create(
             doctor_slot=self.slot,
@@ -63,8 +63,8 @@ class NotificationsTest(TestCase):
         appt.save()
         mock_notify_task.assert_not_called()
 
-    @patch('notifications.tasks.send_telegram_message')
-    @patch('notifications.tasks.notify_admin_task.apply_async')
+    @patch("notifications.tasks.send_telegram_message")
+    @patch("notifications.tasks.notify_admin_task.apply_async")
     def test_check_no_shows_daily_task(self, mock_apply_async, mock_send_msg):
 
         past_slot = DoctorSlot.objects.create(
