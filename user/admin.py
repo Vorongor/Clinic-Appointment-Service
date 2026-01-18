@@ -50,7 +50,12 @@ class PatientAdmin(admin.ModelAdmin):
         "has_active_penalties",
     )
     list_filter = ("gender",)
-    search_fields = ("user__email", "user__first_name", "user__last_name", "phone_number")
+    search_fields = (
+        "user__email",
+        "user__first_name",
+        "user__last_name",
+        "phone_number",
+    )
 
     @admin.display(description="Total Debt")
     def total_unpaid_amount(self, obj):
