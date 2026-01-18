@@ -48,7 +48,6 @@ class StripeWebhookView(APIView):
                 payment.status = Payment.Status.PAID
                 payment.save()
 
-                # TODO Send notification payment success
                 appointment = payment.appointment
                 appointment.status = "BOOKED"
                 appointment.save()
@@ -96,8 +95,6 @@ class PaymentViewSet(ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # TODO TRIGGER TASK STUB: appointment_success_update
-        # appointment_success_update.delay(payment.appointment.id)
         return Response(
             {
                 "detail": "Thank you for your payment! "
@@ -130,8 +127,6 @@ class PaymentViewSet(ReadOnlyModelViewSet):
         if session_id:
             payment = Payment.objects.filter(session_id=session_id).first()
             if payment:
-                # TODO TRIGGER TASK STUB: appointment_cancel_update
-                # appointment_cancel_update.delay(payment.appointment.id)
                 print(
                     f"DEBUG: Triggering task appointment_cancel_update for "
                     f"Appointment {payment.appointment.id}")
