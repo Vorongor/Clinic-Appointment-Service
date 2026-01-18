@@ -33,7 +33,7 @@ class AppointmentFilter(filters.FilterSet):
     )
     status = filters.ChoiceFilter(
         choices=Appointment.Status.choices,
-        field_name="Appointment status",
+        label="Appointment status",
     )
 
     class Meta:
