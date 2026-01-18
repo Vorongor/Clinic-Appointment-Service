@@ -42,7 +42,8 @@ class User(AbstractUser):
     @property
     def has_penalty(self):
         """
-        return True if user has pending payment
+        Return True if user has pending payment.
+        Logic added by colleague in PR #45.
         """
         has_pending = self.appointments.filter(
             payments__status=Payment.Status.PENDING
@@ -66,6 +67,21 @@ class Patient(models.Model):
     birth_date = models.DateField(null=True, blank=True)
     phone_number = models.CharField(max_length=20, blank=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
+
+    @property
+    def total_unpaid_amount(self):
+        """
+        Calculates the total amount of money the patient owes.
+        """
+        from payment.models import Payment
+        from django.db.models import Sum
+
+        unpaid_payments = Payment.objects.filter(
+            appointment__patient=self.user,
+            status=Payment.Status.PENDING
+        )
+        result = unpaid_payments.aggregate(total=Sum("money_to_pay"))
+        return result["total"] or 0.00
 
     def __str__(self):
         return (
