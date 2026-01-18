@@ -77,7 +77,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer.save(
             patient=patient,
         )
-        # TODO trigger sed booked
 
     """
     Cancellation logic with validation and transaction
