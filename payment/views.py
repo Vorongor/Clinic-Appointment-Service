@@ -142,6 +142,7 @@ class PaymentViewSet(ReadOnlyModelViewSet):
                     f"DEBUG: Triggering task appointment_cancel_update for "
                     f"Appointment {payment.appointment.id}")
 
+        # TODO TRIGGER TASK STUB: appointment_cancel_update
         return Response(
             {
                 "detail": "Payment was cancelled. "
