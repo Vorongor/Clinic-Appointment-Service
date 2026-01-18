@@ -69,7 +69,7 @@ class PatientStatusTests(TestCase):
         )
         self.patient = self.user.patient_profile
         self.appointment = Appointment.objects.create(
-            patient=self.patient,
+            patient=self.user,
             time=datetime.now()
         )
 
