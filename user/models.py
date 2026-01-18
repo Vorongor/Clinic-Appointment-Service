@@ -69,5 +69,7 @@ class Patient(models.Model):
 
     def __str__(self):
         return (
-            f"{self.user.first_name} " f"{self.user.last_name} " f"({self.user.email})"
+            f"{self.user.first_name} "
+            f"{self.user.last_name} " 
+            f"({self.user.email})"
         )
