@@ -14,6 +14,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from payment.models import Payment
 from payment.serializers import PaymentSerializer
+from payment.services.logic import renew_payment_session
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -75,8 +76,12 @@ class PaymentViewSet(ReadOnlyModelViewSet):
         description="Handles user redirection after successful payment. "
                     "Triggers background tasks.",
         parameters=[
-            OpenApiParameter(name="session_id", required=True, type=str,
-                             location=OpenApiParameter.QUERY)
+            OpenApiParameter(
+                name="session_id",
+                required=True,
+                type=str,
+                location=OpenApiParameter.QUERY
+            )
         ],
         responses={200: None, 400: None, 404: None},
     )
@@ -85,8 +90,10 @@ class PaymentViewSet(ReadOnlyModelViewSet):
     def success(self, request):
         session_id = request.query_params.get("session_id")
         if not session_id:
-            return Response({"detail": "session_id is required"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "session_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         payment = Payment.objects.filter(session_id=session_id).first()
         if not payment:
@@ -119,9 +126,14 @@ class PaymentViewSet(ReadOnlyModelViewSet):
         ],
         responses={200: None},
     )
-    @action(detail=False, methods=["get"], url_path="cancel",
-            permission_classes=[AllowAny])
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="cancel",
+        permission_classes=[AllowAny]
+    )
     def cancel(self, request):
+        # TODO TRIGGER TASK STUB: appointment_cancel_update
         session_id = request.query_params.get("session_id")
 
         if session_id:
@@ -131,6 +143,7 @@ class PaymentViewSet(ReadOnlyModelViewSet):
                     f"DEBUG: Triggering task appointment_cancel_update for "
                     f"Appointment {payment.appointment.id}")
 
+        # TODO TRIGGER TASK STUB: appointment_cancel_update
         return Response(
             {
                 "detail": "Payment was cancelled. "
@@ -138,3 +151,30 @@ class PaymentViewSet(ReadOnlyModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @extend_schema(
+        summary="Renew Stripe Checkout session",
+        description=(
+                "Creates a new Stripe Checkout session for an existing Payment. "
+                "Use this when the previous session expired"
+                "or the user lost the link. "
+                "Paid payments can't be renewed."
+        ),
+        request=None,
+        responses={200: PaymentSerializer, 400: None, 404: None},
+    )
+    @action(detail=True, methods=["post"], url_path="renew")
+    def renew(self, request, pk=None):
+        payment = self.get_object()
+
+        try:
+            payment = renew_payment_session(payment)
+        except ValueError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as err:
+            return Response(
+                {"detail": f"Failed to renew payment session: {err}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(PaymentSerializer(payment).data, status=status.HTTP_200_OK)

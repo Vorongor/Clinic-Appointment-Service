@@ -61,6 +61,11 @@ jobs:
         run: |
           docker compose exec -T web python manage.py test
 
+      - name: Run Django tests with coverage
+        run: |
+          docker compose exec -T web coverage run manage.py test
+          docker compose exec -T web coverage report --fail-under=60
+
       - name: Stop containers
         if: always()
         run: |

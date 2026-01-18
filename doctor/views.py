@@ -1,6 +1,5 @@
 from rest_framework import viewsets, status, mixins
 from rest_framework.response import Response
-from django.db.models import Exists, OuterRef
 from django_filters.rest_framework import DjangoFilterBackend
 from user.permissions import IsAdminOrReadOnly
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
