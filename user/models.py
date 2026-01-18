@@ -55,6 +55,31 @@ class Patient(models.Model):
     phone_number = models.CharField(max_length=20, blank=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
 
+    @property
+    def total_unpaid_amount(self):
+        from payment.models import Payment
+        from django.db.models import Sum
+
+        unpaid_payments = Payment.objects.filter(
+            appointment__patient=self,
+            status=Payment.Status.PENDING
+        )
+        result = unpaid_payments.aggregate(total=Sum("money_to_pay"))
+        return result["total"] or 0.00
+
+    @property
+    def has_active_penalties(self):
+        from payment.models import Payment
+
+        return Payment.objects.filter(
+            appointment__patient=self,
+            status=Payment.Status.PENDING,
+            payment_type__in=[
+                Payment.Type.CANCELLATION_FEE,
+                Payment.Type.NO_SHOW_FEE
+            ]
+        ).exists()
+
     def __str__(self):
         return (f"{self.user.first_name} "
                 f"{self.user.last_name} "
