@@ -76,8 +76,12 @@ class PaymentViewSet(ReadOnlyModelViewSet):
         description="Handles user redirection after successful payment. "
                     "Triggers background tasks.",
         parameters=[
-            OpenApiParameter(name="session_id", required=True, type=str,
-                             location=OpenApiParameter.QUERY)
+            OpenApiParameter(
+                name="session_id",
+                required=True,
+                type=str,
+                location=OpenApiParameter.QUERY
+            )
         ],
         responses={200: None, 400: None, 404: None},
     )
@@ -86,8 +90,10 @@ class PaymentViewSet(ReadOnlyModelViewSet):
     def success(self, request):
         session_id = request.query_params.get("session_id")
         if not session_id:
-            return Response({"detail": "session_id is required"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "session_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         payment = Payment.objects.filter(session_id=session_id).first()
         if not payment:
@@ -122,20 +128,14 @@ class PaymentViewSet(ReadOnlyModelViewSet):
         ],
         responses={200: None},
     )
-    @action(detail=False, methods=["get"], url_path="cancel",
-            permission_classes=[AllowAny])
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="cancel",
+        permission_classes=[AllowAny]
+    )
     def cancel(self, request):
-        session_id = request.query_params.get("session_id")
-
-        if session_id:
-            payment = Payment.objects.filter(session_id=session_id).first()
-            if payment:
-                # TODO TRIGGER TASK STUB: appointment_cancel_update
-                # appointment_cancel_update.delay(payment.appointment.id)
-                print(
-                    f"DEBUG: Triggering task appointment_cancel_update for "
-                    f"Appointment {payment.appointment.id}")
-
+        # TODO TRIGGER TASK STUB: appointment_cancel_update
         return Response(
             {
                 "detail": "Payment was cancelled. "
