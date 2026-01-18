@@ -6,12 +6,6 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 from rest_framework.permissions import AllowAny
-from rest_framework.routers import DefaultRouter
-from doctor.views import DoctorSlotViewSet
-
-
-slot_router = DefaultRouter()
-slot_router.register("", DoctorSlotViewSet, basename="slot")
 
 
 urlpatterns = [
