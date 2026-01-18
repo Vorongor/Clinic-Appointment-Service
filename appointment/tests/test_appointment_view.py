@@ -121,16 +121,19 @@ class AppointmentCreateAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_if_user_has_penalty(self):
+        """
+        User can't book appointment if he has unpaid penalty
+        """
         appointment = Appointment.objects.create(
             doctor_slot=self.slot,
             patient=self.patient_user,
-            status="COMPLETED",
+            status=Appointment.Status.COMPLETED,
         )
 
         Payment.objects.create(
             appointment=appointment,
-            status="PENDING",
-            payment_type="CONSULTATION",
+            status=Payment.Status.PENDING,
+            payment_type=Payment.Type.CONSULTATION,
             session_id="test_session_id",
             money_to_pay=self.doctor.price_per_visit,
         )
@@ -149,3 +152,31 @@ class AppointmentCreateAPITests(APITestCase):
             "You cannot book a new appointment until you pay pending invoices.",
             str(response.data)
         )
+
+    def test_if_user_doesnt_have_penalty(self):
+        """
+        User can book appointment if he has paid penalty
+        """
+        appointment = Appointment.objects.create(
+            doctor_slot=self.slot,
+            patient=self.patient_user,
+            status=Appointment.Status.COMPLETED,
+        )
+
+        Payment.objects.create(
+            appointment=appointment,
+            status=Payment.Status.PAID,
+            payment_type=Payment.Type.CONSULTATION,
+            session_id="test_session_id",
+            money_to_pay=self.doctor.price_per_visit,
+        )
+
+        self.client.force_authenticate(user=self.patient_user)
+
+        url = reverse("appointment-list")
+        data = {
+            "doctor_slot": self.slot_2.id,
+        }
+        response = self.client.post(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
