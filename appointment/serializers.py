@@ -3,7 +3,8 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from appointment.models import Appointment
-from doctor.serializers import DoctorSlotSerializer
+from doctor.models import DoctorSlot
+from doctor.serializers import DoctorSlotDetailSerializer
 from payment.serializers import PaymentSerializer
 from user.serializers import UserSerializer
 
@@ -14,6 +15,16 @@ User = get_user_model()
 class AppointmentSerializer(serializers.ModelSerializer):
     patient = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), required=False
+    )
+    """
+    Excluding all appointments in the past and with status booked,
+    completed, no show to better user-friendly design
+    """
+    doctor_slot = serializers.PrimaryKeyRelatedField(
+        queryset=DoctorSlot.objects.filter(
+            start__gt=timezone.now(),
+        ).exclude(appointment__status__in=["BOOKED", "COMPLETED", "NO_SHOW"]),
+        label="Free slot",
     )
 
     class Meta:
@@ -55,6 +66,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         slot = attrs.get("doctor_slot")
         user = self.context["request"].user
+        patient = attrs.get("patient")
 
         if slot.start < timezone.now():
             raise serializers.ValidationError(
@@ -72,11 +84,27 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 {"doctor_slot": "This slot is already booked by another patient."}
             )
 
-        if user.is_authenticated and user.has_penalty:
+        if (
+            user.is_authenticated
+            and not user.is_staff
+            and getattr(user, "has_penalty", False)
+        ):
             raise serializers.ValidationError(
                 {
                     "detail": "You cannot book a new appointment "
-                    "until you pay pending invoices."
+                    f"until you pay pending invoices. Total {user.has_penalty}"
+                }
+            )
+
+        if (
+            user.is_authenticated
+            and patient
+            and getattr(patient, "has_penalty", False)
+        ):
+            raise serializers.ValidationError(
+                {
+                    "detail": "You cannot book a new appointment "
+                    f"until user will pay the loan. Total {patient.has_penalty}"
                 }
             )
 
@@ -84,7 +112,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
 class AppointmentDetailSerializer(AppointmentSerializer):
-    doctor_slot = DoctorSlotSerializer(read_only=True)
+    doctor_slot = DoctorSlotDetailSerializer(read_only=True)
     patient = UserSerializer(read_only=True)
     payment = PaymentSerializer(read_only=True, source="payments", many=True)
 
