@@ -5,6 +5,8 @@ from .models import Patient
 
 
 class UserSerializer(serializers.ModelSerializer):
+    has_penalty = serializers.ReadOnlyField()
+
     class Meta:
         model = get_user_model()
         fields = (
@@ -13,9 +15,10 @@ class UserSerializer(serializers.ModelSerializer):
             "password",
             "first_name",
             "last_name",
-            "is_staff"
+            "is_staff",
+            "has_penalty"
         )
-        read_only_fields = ("id", "is_staff")
+        read_only_fields = ("id", "is_staff", "has_penalty")
         extra_kwargs = {
             "password": {
                 "write_only": True,
@@ -39,6 +42,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class PatientSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
+    total_unpaid_amount = serializers.ReadOnlyField()
 
     class Meta:
         model = Patient
@@ -48,6 +52,7 @@ class PatientSerializer(serializers.ModelSerializer):
             "email",
             "birth_date",
             "phone_number",
-            "gender"
+            "gender",
+            "total_unpaid_amount"
         )
-        read_only_fields = ("id", "user")
+        read_only_fields = ("id", "user", "total_unpaid_amount")
