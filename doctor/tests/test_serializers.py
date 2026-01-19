@@ -20,14 +20,14 @@ class DoctorSerializerTests(TestCase):
         self.assertEqual(data["first_name"], "John")
         self.assertEqual(data["last_name"], "Doe")
         self.assertEqual(data["price_per_visit"], "50.00")
-        self.assertIn(self.specialization.id, data["specializations"])
+        self.assertIn(self.specialization.code, data["specializations"])
 
     def test_deserialize_valid_data(self):
         data = {
             "first_name": "Jane",
             "last_name": "Smith",
             "price_per_visit": "75.00",
-            "specializations": [self.specialization.id],
+            "specializations": [self.specialization.code],
         }
         serializer = DoctorSerializer(data=data)
         self.assertTrue(serializer.is_valid())
@@ -41,7 +41,7 @@ class DoctorSerializerTests(TestCase):
         data = {
             "last_name": "Smith",
             "price_per_visit": "75.00",
-            "specializations": [self.specialization.id],
+            "specializations": [self.specialization.code],
         }
         serializer = DoctorSerializer(data=data)
         self.assertFalse(serializer.is_valid())
