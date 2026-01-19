@@ -6,8 +6,10 @@ from specializations.models import Specialization
 
 
 class DoctorSerializer(serializers.ModelSerializer):
-    specializations = serializers.PrimaryKeyRelatedField(
-        queryset=Specialization.objects.all(), many=True
+    specializations = serializers.SlugRelatedField(
+        many=True,
+        queryset=Specialization.objects.all(),
+        slug_field="code"
     )
 
     class Meta:
