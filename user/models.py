@@ -1,8 +1,7 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-
-from payment.models import Payment
+from django.db.models import Sum
 
 
 class UserManager(BaseUserManager):
@@ -42,14 +41,16 @@ class User(AbstractUser):
     @property
     def has_penalty(self):
         """
-        Return True if user has pending payment.
-        Logic added by colleague in PR #45.
+        Returns the total unpaid amount (Decimal) if pending payments exist,
+        otherwise returns False. Local import prevents circular dependency.
         """
-        has_pending = self.appointments.filter(
-            payments__status=Payment.Status.PENDING
-        ).exists()
+        from payment.models import Payment
 
-        return has_pending
+        result = self.appointments.filter(
+            payments__status=Payment.Status.PENDING
+        ).aggregate(total=Sum("payments__money_to_pay"))
+        total = result["total"]
+        return total if total and total > 0 else False
 
     def __str__(self):
         return self.email
@@ -72,16 +73,10 @@ class Patient(models.Model):
     def total_unpaid_amount(self):
         """
         Calculates the total amount of money the patient owes.
+        Uses the logic from has_penalty for consistency.
         """
-        from payment.models import Payment
-        from django.db.models import Sum
-
-        unpaid_payments = Payment.objects.filter(
-            appointment__patient=self.user,
-            status=Payment.Status.PENDING
-        )
-        result = unpaid_payments.aggregate(total=Sum("money_to_pay"))
-        return result["total"] or 0.00
+        penalty = self.user.has_penalty
+        return penalty if penalty else 0.00
 
     def __str__(self):
         return (
