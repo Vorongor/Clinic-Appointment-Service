@@ -11,6 +11,7 @@ class DoctorSerializer(serializers.ModelSerializer):
         queryset=Specialization.objects.all(),
         slug_field="code"
     )
+
     class Meta:
         model = Doctor
         fields = [
