@@ -19,7 +19,7 @@ class DoctorSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "specializations",
-            "price_per_visit",
+            "price_per_visit"
         ]
 
 
