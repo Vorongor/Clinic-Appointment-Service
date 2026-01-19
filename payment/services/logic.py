@@ -218,8 +218,7 @@ def make_refund(payment, percentage):
 
 def create_new_payment_or_update(appointment, amount, payment_type):
     """Creates a Stripe session and a DB record."""
-    existing = appointment.payments.filter(
-        status=Payment.Status.PENDING).first()
+    existing = appointment.payments.first()
 
     new_session = create_checkout_session(
         amount_usd=amount,
