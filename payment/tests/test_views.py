@@ -70,10 +70,12 @@ class StripeWebhookTests(APITestCase):
 
     @patch("stripe.Webhook.construct_event")
     def test_webhook_checkout_session_completed(self, mock_construct):
+        fake_session = FakeSession("cs_test_123")
+        fake_session.payment_intent = "pi_test_999"
         mock_construct.return_value = {
             "type": "checkout.session.completed",
             "data": {
-                "object": FakeSession("cs_test_123")
+                "object": fake_session
             }
         }
 

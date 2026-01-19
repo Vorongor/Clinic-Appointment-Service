@@ -38,4 +38,4 @@ class DoctorSlot(models.Model):
 
     @property
     def is_booked(self):
-        return appointment.exists()
+        return self.appointment.exists()

@@ -104,8 +104,9 @@ def _handle_cancellation(appointment, remaining_time):
             )
         if pending_payment:
             expire_stripe_session(pending_payment)
+        payment_to_use = pending_payment or existing_payment
         return create_new_payment_or_update(
-            pending_payment or existing_payment,
+            payment_to_use.appointment,
             Decimal("0.0"),
             Payment.Type.CANCELLATION_FEE
         )
@@ -128,7 +129,6 @@ def _handle_cancellation(appointment, remaining_time):
 
 def _handle_no_show(appointment):
     """The logic of the penalty for non-appearance"""
-    price = appointment.price
     amount = calculate_payment_amount(appointment, Payment.Type.NO_SHOW_FEE)
 
     return create_new_payment_or_update(
@@ -174,15 +174,18 @@ def make_refund(payment, percentage):
                 payment.save()
             else:
                 logger.error(
-                    f"Session {payment.session_id} has no PaymentIntent yet (unpaid?)")
+                    f"Session {payment.session_id} has no "
+                    "PaymentIntent yet (unpaid?)"
+                )
                 return False
         except Exception as e:
             logger.error(f"Failed to retrieve session from Stripe: {e}")
             return False
 
     try:
-        refund_amount = payment.money_to_pay * (
-                    Decimal(percentage) / Decimal(100))
+        refund_amount = (payment.money_to_pay
+                         * (Decimal(percentage) / Decimal(100))
+                         )
         logger.info(
             f"Refunding {percentage}%: {refund_amount} for payment {payment.id}")
 
@@ -198,11 +201,13 @@ def make_refund(payment, percentage):
             amount=amount_to_refund,
         )
         payment.money_to_pay = payment.money_to_pay - refund_amount
-        payment.status = Payment.Status.REFUNDED if percentage == 100 else Payment.Status.PARTIALLY_REFUNDED
+        payment.status = Payment.Status.REFUNDED if (percentage == 100) \
+            else Payment.Status.PARTIALLY_REFUNDED
         payment.save()
 
         logger.info(
-            f"Successfully refunded {percentage}% ({amount_to_refund / 100:.2f} USD) "
+            f"Successfully refunded {percentage}% "
+            f"({amount_to_refund / 100:.2f} USD) "
             f"for payment {payment.id}. Refund ID: {refund.id}")
         return True
 
