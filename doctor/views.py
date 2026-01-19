@@ -87,7 +87,7 @@ class DoctorSlotNestedViewSet(
                 type=OpenApiTypes.STR,
                 enum=["True", "False"],
                 description="If True, show only slots "
-                            "without booked appointments",
+                            "without booked appointment",
             ),
         ],
     )
@@ -183,20 +183,20 @@ class DoctorSlotNestedViewSet(
 
     @extend_schema(
         summary="Delete a doctor slot",
-        description="Delete a slot if it has no associated appointments.",
+        description="Delete a slot if it has no associated appointment.",
         responses={
             204: None,
             400: {
                 "description": "Cannot delete slot "
-                               "with existing appointments"},
+                               "with existing appointment"},
         },
     )
     def destroy(self, request, doctor_pk=None, pk=None):
         slot = self.get_object()
-        if slot.appointments.exists():
+        if slot.appointment.exists():
             return Response(
                 {"detail": "Cannot delete slot with existing "
-                           "appointments"},
+                           "appointment"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         slot.delete()
@@ -226,7 +226,7 @@ class DoctorSlotViewSet(
 
     @extend_schema(
         summary="Delete a doctor slot",
-        description="Delete a slot if it has no associated appointments.",
+        description="Delete a slot if it has no associated appointment.",
         responses={
             204: None,
             400: {
@@ -239,7 +239,7 @@ class DoctorSlotViewSet(
         if slot.appointment.exists():
             return Response(
                 {"detail": "Cannot delete slot with existing "
-                           "appointments"},
+                           "appointment"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         slot.delete()
