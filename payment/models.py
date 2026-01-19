@@ -5,6 +5,8 @@ from appointment.models import Appointment
 
 class Payment(models.Model):
     class Status(models.TextChoices):
+        PARTIALLY_REFUNDED = ("PARTIALLY_REFUNDED", "Refunded 50% of price")
+        REFUNDED = ("REFUNDED", "Refunded 100% of price")
         PENDING = ("PENDING", "Pending")
         PAID = ("PAID", "Paid")
         EXPIRED = ("EXPIRED", "Expired")
@@ -15,7 +17,7 @@ class Payment(models.Model):
         NO_SHOW_FEE = ("NO_SHOW_FEE", "No-show fee")
 
     status = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=Status.choices,
         default=Status.PENDING,
     )
@@ -34,6 +36,11 @@ class Payment(models.Model):
 
     money_to_pay = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
+    stripe_payment_intent_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True
+    )
 
     class Meta:
         ordering = ("-created_at",)

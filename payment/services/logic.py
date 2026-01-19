@@ -20,7 +20,8 @@ def renew_payment_session(payment: Payment) -> Payment:
 
     if payment.session_id:
         try:
-            stripe_session = stripe.checkout.Session.retrieve(payment.session_id)
+            stripe_session = stripe.checkout.Session.retrieve(
+                payment.session_id)
 
             if getattr(stripe_session, "payment_status", None) == "paid":
                 payment.status = Payment.Status.PAID
@@ -55,71 +56,185 @@ def renew_payment_session(payment: Payment) -> Payment:
     return payment
 
 
-def calculate_payment_amount(appointment, payment_type):
+def calculate_payment_amount(appointment, payment_type, time_diff=None):
+    user = appointment.patient
+
     price = appointment.price
+    if user.has_penalty:
+        logger.info(
+            f"User has penalty for appointment {user.has_penalty} "
+        )
+        price += user.has_penalty
+
     if payment_type == Payment.Type.CONSULTATION:
         return price
+
     if payment_type == Payment.Type.CANCELLATION_FEE:
-        time_diff = appointment.booked_at - timezone.now()
-        if time_diff.total_seconds() < 86400:
+        if time_diff and time_diff < timedelta(hours=24):
             return price * Decimal("0.5")
         return Decimal("0.0")
+
     if payment_type == Payment.Type.NO_SHOW_FEE:
         return price * Decimal("1.2")
+
     return price
 
 
-def process_appointment_payment(appointment, payment_type):
-    amount = calculate_payment_amount(appointment, payment_type)
+def _handle_consultation(appointment, amount):
+    """Logic for creating a regular 100% payment."""
+    return create_new_payment_or_update(
+        appointment,
+        amount,
+        Payment.Type.CONSULTATION
+    )
 
+
+def _handle_cancellation(appointment, remaining_time):
+    """Cancellation logic (100% or 50% refund/payment)."""
     existing_payment = appointment.payments.filter(
-        status=Payment.Status.PENDING
-    ).first()
+        status=Payment.Status.PAID).first()
+    pending_payment = appointment.payments.filter(
+        status=Payment.Status.PENDING).first()
 
-    if existing_payment:
-        try:
-            stripe.checkout.Session.expire(existing_payment.session_id)
-        except Exception:
-            logger.info(
-                f"Free cancellation for appointment {appointment.id}. "
-                f"No new session created.")
-        remaining_time = appointment.booked_at - timezone.now()
-        if (existing_payment.payment_type == Payment.Type.CANCELLATION_FEE
-                and remaining_time > timedelta(hours=24)):
-            try:
-                stripe.checkout.Session.expire(existing_payment.session_id)
-            except Exception as err:
-                logger.warning(
-                    f"Could not expire session for free cancellation: {err}")
+    if remaining_time > timedelta(hours=24):
+        if existing_payment:
+            make_refund(
+                existing_payment,
+                percentage=100
+            )
+        if pending_payment:
+            expire_stripe_session(pending_payment)
+        return create_new_payment_or_update(
+            pending_payment or existing_payment,
+            Decimal("0.0"),
+            Payment.Type.CANCELLATION_FEE
+        )
 
-            existing_payment.status = Payment.Status.EXPIRED
-            existing_payment.payment_type = payment_type
-            existing_payment.money_to_pay = Decimal("0.0")
-            existing_payment.save()
-
-            logger.info(
-                f"Free cancellation for appointment {appointment.id}. "
-                f"No new session created.")
+    else:
+        amount = calculate_payment_amount(
+            appointment,
+            Payment.Type.CANCELLATION_FEE,
+            remaining_time
+        )
+        if existing_payment:
+            make_refund(existing_payment, percentage=50)
             return existing_payment
+        return create_new_payment_or_update(
+            appointment,
+            amount,
+            Payment.Type.CANCELLATION_FEE
+        )
 
-    new_stripe_session = create_checkout_session(
+
+def _handle_no_show(appointment):
+    """The logic of the penalty for non-appearance"""
+    price = appointment.price
+    amount = calculate_payment_amount(appointment, Payment.Type.NO_SHOW_FEE)
+
+    return create_new_payment_or_update(
+        appointment,
+        amount,
+        Payment.Type.NO_SHOW_FEE
+    )
+
+
+def process_appointment_payment(appointment, payment_type):
+    """Updated main helper."""
+    remaining_time = appointment.booked_at - timezone.now()
+
+    if payment_type == Payment.Type.CONSULTATION:
+        amount = calculate_payment_amount(appointment, payment_type)
+        return _handle_consultation(appointment, amount)
+
+    if payment_type == Payment.Type.CANCELLATION_FEE:
+        return _handle_cancellation(appointment, remaining_time)
+
+    if payment_type == Payment.Type.NO_SHOW_FEE:
+        return _handle_no_show(appointment)
+
+    return None
+
+
+def expire_stripe_session(payment):
+    try:
+        if payment.session_id:
+            stripe.checkout.Session.expire(payment.session_id)
+    except Exception as e:
+        logger.warning(f"Could not expire session {payment.session_id}: {e}")
+
+
+def make_refund(payment, percentage):
+    """Stripe Refund."""
+
+    if not payment.stripe_payment_intent_id:
+        try:
+            session = stripe.checkout.Session.retrieve(payment.session_id)
+            if session.payment_intent:
+                payment.stripe_payment_intent_id = session.payment_intent
+                payment.save()
+            else:
+                logger.error(
+                    f"Session {payment.session_id} has no PaymentIntent yet (unpaid?)")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to retrieve session from Stripe: {e}")
+            return False
+
+    try:
+        refund_amount = payment.money_to_pay * (
+                    Decimal(percentage) / Decimal(100))
+        logger.info(
+            f"Refunding {percentage}%: {refund_amount} for payment {payment.id}")
+
+        amount_to_refund = int(refund_amount) * 100
+
+        if amount_to_refund <= 0:
+            logger.warning(
+                f"Refund amount for payment {payment.id} is 0. Skipping.")
+            return False
+
+        refund = stripe.Refund.create(
+            payment_intent=payment.stripe_payment_intent_id,
+            amount=amount_to_refund,
+        )
+        payment.money_to_pay = payment.money_to_pay - refund_amount
+        payment.status = Payment.Status.REFUNDED if percentage == 100 else Payment.Status.PARTIALLY_REFUNDED
+        payment.save()
+
+        logger.info(
+            f"Successfully refunded {percentage}% ({amount_to_refund / 100:.2f} USD) "
+            f"for payment {payment.id}. Refund ID: {refund.id}")
+        return True
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe Refund Error for payment {payment.id}: {str(e)}")
+        return False
+
+
+def create_new_payment_or_update(appointment, amount, payment_type):
+    """Creates a Stripe session and a DB record."""
+    existing = appointment.payments.filter(
+        status=Payment.Status.PENDING).first()
+
+    new_session = create_checkout_session(
         amount_usd=amount,
         title=f"{payment_type} for Appointment {appointment.id}"
     )
 
-    if existing_payment:
-        existing_payment.money_to_pay = amount
-        existing_payment.payment_type = payment_type
-        existing_payment.session_id = new_stripe_session.id
-        existing_payment.session_url = new_stripe_session.url
-        existing_payment.save()
-        return existing_payment
-    else:
-        return Payment.objects.create(
-            appointment=appointment,
-            session_id=new_stripe_session.id,
-            session_url=new_stripe_session.url,
-            money_to_pay=amount,
-            payment_type=payment_type,
-            status=Payment.Status.PENDING,
-        )
+    if existing:
+        expire_stripe_session(existing)
+        existing.money_to_pay = amount
+        existing.payment_type = payment_type
+        existing.session_id = new_session.id
+        existing.session_url = new_session.url
+        existing.save()
+        return existing
+
+    return Payment.objects.create(
+        appointment=appointment,
+        session_id=new_session.id,
+        session_url=new_session.url,
+        money_to_pay=amount,
+        payment_type=payment_type,
+        status=Payment.Status.PENDING,
+    )
