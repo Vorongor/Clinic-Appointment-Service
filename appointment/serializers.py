@@ -66,6 +66,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         slot = attrs.get("doctor_slot")
         user = self.context["request"].user
+        patient = attrs.get("patient")
 
         if slot.start < timezone.now():
             raise serializers.ValidationError(
@@ -83,11 +84,27 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 {"doctor_slot": "This slot is already booked by another patient."}
             )
 
-        if user.is_authenticated and user.has_penalty:
+        if (
+            user.is_authenticated
+            and not user.is_staff
+            and getattr(user, "has_penalty", False)
+        ):
             raise serializers.ValidationError(
                 {
                     "detail": "You cannot book a new appointment "
-                    "until you pay pending invoices."
+                    f"until you pay pending invoices. Total {user.has_penalty}"
+                }
+            )
+
+        if (
+            user.is_authenticated
+            and patient
+            and getattr(patient, "has_penalty", False)
+        ):
+            raise serializers.ValidationError(
+                {
+                    "detail": "You cannot book a new appointment "
+                    f"until user will pay the loan. Total {patient.has_penalty}"
                 }
             )
 

@@ -24,7 +24,6 @@ from appointment.serializers import (
     AppointmentSerializer,
     AppointmentListSerializer,
     AppointmentDetailSerializer,
-    CustomActionSerializer,
 )
 
 
