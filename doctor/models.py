@@ -35,3 +35,7 @@ class DoctorSlot(models.Model):
             f"Slot #{self.id} " f"| "
             f"Doctor - {self.doctor} | {self.start} - {self.end}"
         )
+
+    @property
+    def is_booked(self):
+        return self.appointment.exists()

@@ -81,6 +81,7 @@ class StripeWebhookView(APIView):
             payment = Payment.objects.filter(session_id=session.id).first()
             if payment:
                 payment.status = Payment.Status.PAID
+                payment.stripe_payment_intent_id = session.payment_intent
                 payment.save()
 
                 appointment = payment.appointment

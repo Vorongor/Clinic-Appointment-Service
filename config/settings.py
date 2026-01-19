@@ -151,7 +151,7 @@ CELERY_BEAT_SCHEDULE = {
         "task": "notifications.tasks.check_no_shows_daily",
         "schedule": crontab(hour=19, minute=0),
     },
-    "sync-stripe-payments-every-20-min": {
+    "sync-stripe-payments-every-30-min": {
         "task": "payment.tasks.sync_pending_payments",
         "schedule": 30 * 60.0,
     },

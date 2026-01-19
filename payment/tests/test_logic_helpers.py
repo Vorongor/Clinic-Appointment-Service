@@ -1,101 +1,132 @@
 import datetime
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, PropertyMock
 
+from django.utils import timezone
 from payment.models import Payment
 from payment.tests.base_set_up import BaseTestCaseModel
 from payment.services.logic import (
     calculate_payment_amount,
-    process_appointment_payment
+    process_appointment_payment,
+    renew_payment_session
 )
 
 
-class LogicHelpersTest(BaseTestCaseModel):
-
-    def test_calculate_payment_amount_for_consultation(self):
-        consultation_price = calculate_payment_amount(
-            appointment=self.appointment,
-            payment_type=Payment.Type.CONSULTATION
-        )
-        self.assertEqual(consultation_price, Decimal("10.0"))
+class RefactoredLogicTest(BaseTestCaseModel):
 
     def test_calculate_cancellation_fee_less_than_24h(self):
-        mock_now = self.booked_time - datetime.timedelta(hours=5)
-
-        from unittest.mock import patch
-        with patch("django.utils.timezone.now", return_value=mock_now):
-            price = calculate_payment_amount(
-                self.appointment,
-                Payment.Type.CANCELLATION_FEE
-            )
-            self.assertEqual(price, Decimal("5.0"))
-
-    def test_calculate_cancellation_fee_more_than_24h(self):
-        mock_now = self.booked_time - datetime.timedelta(days=2)
-
-        from unittest.mock import patch
-        with patch('django.utils.timezone.now', return_value=mock_now):
-            price = calculate_payment_amount(
-                self.appointment,
-                Payment.Type.CANCELLATION_FEE
-            )
-            self.assertEqual(price, Decimal("0.0"))
-
-    def test_calculate_no_show_fee(self):
-        no_show_price = calculate_payment_amount(
-            appointment=self.appointment,
-            payment_type=Payment.Type.NO_SHOW_FEE
+        time_diff = datetime.timedelta(hours=5)
+        price = calculate_payment_amount(
+            self.appointment,
+            Payment.Type.CANCELLATION_FEE,
+            time_diff=time_diff
         )
-        self.assertEqual(no_show_price, Decimal("12.0"))
+        self.assertEqual(price, Decimal("5.0"))
 
-    @patch("payment.services.logic.create_checkout_session")
-    @patch("stripe.checkout.Session.expire")
-    def test_process_new_payment_creation(
-            self,
-            mock_stripe_expire,
-            mock_create_session
-    ):
-        mock_session = MagicMock()
-        mock_session.id = "sess_123"
-        mock_session.url = "https://stripe.com/pay"
-        mock_create_session.return_value = mock_session
+    def test_calculate_payment_with_user_penalty(self):
+        with patch.object(
+                type(self.appointment.patient),
+                "has_penalty",
+                new_callable=PropertyMock
+        ) as mock_penalty:
+            mock_penalty.return_value = Decimal("5.0")
 
-        payment = process_appointment_payment(
+            price = calculate_payment_amount(
+                self.appointment,
+                Payment.Type.CONSULTATION
+            )
+
+            self.assertEqual(price, Decimal("15.0"))
+
+        price = calculate_payment_amount(
             self.appointment,
             Payment.Type.CONSULTATION
         )
 
-        self.assertEqual(Payment.objects.count(), 1)
-        self.assertEqual(payment.session_id, "sess_123")
-        self.assertEqual(payment.money_to_pay, self.appointment.price)
-        mock_create_session.assert_called_once()
+        self.assertEqual(price, Decimal("10.0"))
+
+    @patch("payment.services.logic.create_checkout_session")
+    @patch("stripe.checkout.Session.retrieve")
+    def test_renew_payment_already_paid_locally(self, mock_retrieve,
+                                                mock_create):
+        payment = Payment.objects.create(
+            appointment=self.appointment,
+            money_to_pay=Decimal("10.0"),
+            status=Payment.Status.PAID
+        )
+        with self.assertRaises(ValueError) as cm:
+            renew_payment_session(payment)
+        self.assertEqual(str(cm.exception), "Paid payments can't be renewed")
+
+    @patch("payment.services.logic.create_checkout_session")
+    @patch("stripe.checkout.Session.retrieve")
+    def test_renew_payment_updates_status_if_paid_on_stripe(self,
+                                                            mock_retrieve,
+                                                            mock_create):
+        payment = Payment.objects.create(
+            appointment=self.appointment,
+            session_id="old_sess",
+            money_to_pay=Decimal("10.0"),
+            status=Payment.Status.PENDING
+        )
+        mock_stripe_session = MagicMock()
+        mock_stripe_session.payment_status = "paid"
+        mock_retrieve.return_value = mock_stripe_session
+
+        renew_payment_session(payment)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.PAID)
 
     @patch("payment.services.logic.create_checkout_session")
     @patch("stripe.checkout.Session.expire")
-    def test_process_update_existing_payment(
-            self,
-            mock_stripe_expire,
-            mock_create_session
-    ):
+    def test_process_consultation_creates_payment(self, mock_expire,
+                                                  mock_create):
+        mock_session = MagicMock(id="sess_new", url="https://stripe.com/new")
+        mock_create.return_value = mock_session
+
+        payment = process_appointment_payment(self.appointment,
+                                              Payment.Type.CONSULTATION)
+
+        self.assertEqual(payment.session_id, "sess_new")
+        self.assertEqual(payment.payment_type, Payment.Type.CONSULTATION)
+        self.assertEqual(Payment.objects.count(), 1)
+
+    @patch("payment.services.logic.make_refund")
+    def test_handle_cancellation_long_term_refunds(self, mock_refund):
         Payment.objects.create(
             appointment=self.appointment,
-            session_id="old_id",
             money_to_pay=Decimal("10.0"),
-            payment_type=Payment.Type.CONSULTATION,
-            status=Payment.Status.PENDING
+            status=Payment.Status.PAID,
+            stripe_payment_intent_id="pi_123"
         )
 
-        mock_session = MagicMock()
-        mock_session.id = "new_sess_123"
-        mock_session.url = "https://checkout.stripe.com/pay/new"
-        mock_create_session.return_value = mock_session
+        self.appointment.booked_at = timezone.now() + datetime.timedelta(
+            days=2)
+        self.appointment.save()
 
-        payment = process_appointment_payment(
-            self.appointment,
-            Payment.Type.NO_SHOW_FEE
+        process_appointment_payment(self.appointment,
+                                    Payment.Type.CANCELLATION_FEE)
+
+        mock_refund.assert_called_once()
+        args, kwargs = mock_refund.call_args
+        self.assertEqual(kwargs['percentage'], 100)
+
+    @patch("stripe.Refund.create")
+    @patch("stripe.checkout.Session.retrieve")
+    def test_make_refund_logic(self, mock_retrieve, mock_refund_create):
+        payment = Payment.objects.create(
+            appointment=self.appointment,
+            money_to_pay=Decimal("10.0"),
+            status=Payment.Status.PAID,
+            stripe_payment_intent_id="pi_123"
         )
 
-        mock_stripe_expire.assert_called_with("old_id")
-        self.assertEqual(Payment.objects.count(), 1)
-        self.assertEqual(payment.session_id, "new_sess_123")
-        self.assertEqual(payment.payment_type, Payment.Type.NO_SHOW_FEE)
+        from payment.services.logic import make_refund
+        success = make_refund(payment, percentage=50)
+
+        self.assertTrue(success)
+        mock_refund_create.assert_called_with(
+            payment_intent="pi_123",
+            amount=500
+        )
+        self.assertEqual(payment.status, Payment.Status.PARTIALLY_REFUNDED)

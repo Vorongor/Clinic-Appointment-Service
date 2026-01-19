@@ -1,0 +1,42 @@
+================> Common user work flow <===========================
+Register: 127.0.0.1:/api/user/register/
+{
+  "email": "enlly_tony@mail.com",
+  "password": "1Qazcde3",
+  "first_name": "Elisabet",
+  "last_name": "Bishop"
+}
+Login - 127.0.0.1:/api/user/register/
+{
+    "email": "enlly_tony@mail.com",
+    "password": "1Qazcde3"
+}
+personal info - 127.0.0.1:/api/user/me/
+Authorize eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY4ODIxOTA2LCJpYXQiOjE3Njg4MTgzMDYsImp0aSI6IjZmZTdlN2QxNWZkNzQ5MTU5OWExMDkwNmZhMmIzODJmIiwidXNlcl9pZCI6M30.Oy9CSkU2X6PRh9Lm68mFGZRQkw99zf1FF_C5AlaMNzI
+
+search doctor - 127.0.0.1:/api/doctors/
+
+choose clots - 127.0.0.1:/api/doctors/1/
+
+choose slots - 127.0.0.1:/api/doctors/1/slots/
+
+make appointment - 127.0.0.1:/api/appointments/
+{
+  "doctor_slot": 8
+}
+make appointment - 127.0.0.1:/api/appointments/6/cancel/
+==========================> Staff user work flow <=============================
+Login - 127.0.0.1:/api/user/register/
+{
+    "email": "bob_bobowich@admin.com",
+    "password": "1Qazcde3"
+}
+
+create specialization - 127.0.0.1:/api/specializations/
+{
+    "name": "Psychiatrists",
+    "code": "0090-psy",
+    "description": "These doctors work with people with mental, emotional"
+}
+
+create the Doctor - 127.0.0.1:/api/doctors/
