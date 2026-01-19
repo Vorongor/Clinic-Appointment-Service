@@ -9,7 +9,7 @@ class DoctorSerializer(serializers.ModelSerializer):
     specializations = serializers.SlugRelatedField(
         many=True,
         queryset=Specialization.objects.all(),
-        slug_field="code"
+        slug_field="name"
     )
 
     class Meta:
