@@ -14,6 +14,7 @@ from drf_spectacular.utils import (
 )
 from rest_framework import viewsets, filters, status, serializers
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 
@@ -25,7 +26,26 @@ from appointment.serializers import (
     AppointmentDetailSerializer,
     CustomActionSerializer,
 )
-from payment.models import Payment
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "limit"
+    max_page_size = 50
+
+    def get_paginated_response(self, data):
+        return Response(
+            {
+                "links": {
+                    "next": self.get_next_link(),
+                    "previous": self.get_previous_link(),
+                },
+                "count": self.page.paginator.count,
+                "total_pages": self.page.paginator.num_pages,
+                "current_page": self.page.number,
+                "results": data,
+            }
+        )
 
 
 @extend_schema_view(
@@ -100,6 +120,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
+    pagination_class = StandardResultsSetPagination
     action_serializers = {
         "retrieve": AppointmentDetailSerializer,
         "list": AppointmentListSerializer,
@@ -111,6 +132,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         "doctor_slot__doctor__last_name",
     ]
     filterset_class = AppointmentFilter
+    ordering = ["-booked_at"]
 
     def get_serializer_class(self):
         if self.action in [

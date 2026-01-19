@@ -3,7 +3,8 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from appointment.models import Appointment
-from doctor.serializers import DoctorSlotSerializer
+from doctor.models import DoctorSlot
+from doctor.serializers import DoctorSlotDetailSerializer
 from payment.serializers import PaymentSerializer
 from user.serializers import UserSerializer
 
@@ -14,6 +15,16 @@ User = get_user_model()
 class AppointmentSerializer(serializers.ModelSerializer):
     patient = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), required=False
+    )
+    """
+    Excluding all appointments in the past and with status booked,
+    completed, no show to better user-friendly design
+    """
+    doctor_slot = serializers.PrimaryKeyRelatedField(
+        queryset=DoctorSlot.objects.filter(
+            start__gt=timezone.now(),
+        ).exclude(appointment__status__in=["BOOKED", "COMPLETED", "NO_SHOW"]),
+        label="Free slot",
     )
 
     class Meta:
@@ -84,7 +95,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
 class AppointmentDetailSerializer(AppointmentSerializer):
-    doctor_slot = DoctorSlotSerializer(read_only=True)
+    doctor_slot = DoctorSlotDetailSerializer(read_only=True)
     patient = UserSerializer(read_only=True)
     payment = PaymentSerializer(read_only=True, source="payments", many=True)
 
