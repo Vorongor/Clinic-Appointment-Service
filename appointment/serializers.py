@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -73,16 +74,15 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 {"doctor_slot": "You cannot book a slot in the past."}
             )
 
-        is_taken = (
-            Appointment.objects.filter(doctor_slot=slot)
-            .exclude(status=Appointment.Status.CANCELLED)
-            .exists()
-        )
+        with transaction.atomic():
+            is_taken = Appointment.objects.select_for_update().filter(
+                doctor_slot=slot
+            ).exclude(status='CANCELLED').exists()
 
-        if is_taken:
-            raise serializers.ValidationError(
-                {"doctor_slot": "This slot is already booked by another patient."}
-            )
+            if is_taken:
+                raise serializers.ValidationError(
+                    {"doctor_slot": "This slot is already booked by another patient."}
+                )
 
         if (
             user.is_authenticated
@@ -133,10 +133,3 @@ class AppointmentListSerializer(AppointmentSerializer):
         if last_payment:
             return last_payment.status
         return None
-
-
-class CustomActionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Appointment
-        fields = ("id", "doctor_slot", "patient", "status")
-        read_only_fields = fields
