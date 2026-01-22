@@ -65,8 +65,8 @@ class Appointment(models.Model):
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['doctor_slot'],
-                condition=~Q(status='CANCELLED'),
-                name='unique_active_slot_booking'
+                fields=["doctor_slot"],
+                condition=~Q(status="CANCELLED"),
+                name="unique_active_slot_booking"
             )
         ]

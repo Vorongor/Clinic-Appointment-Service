@@ -77,11 +77,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             is_taken = Appointment.objects.select_for_update().filter(
                 doctor_slot=slot
-            ).exclude(status='CANCELLED').exists()
+            ).exclude(status="CANCELLED").exists()
 
             if is_taken:
                 raise serializers.ValidationError(
-                    {"doctor_slot": "This slot is already booked by another patient."}
+                    {"doctor_slot":
+                        "This slot is already booked by another patient."}
                 )
 
         if (
@@ -129,4 +130,4 @@ class AppointmentListSerializer(AppointmentSerializer):
         fields = AppointmentSerializer.Meta.fields + ("payment_status",)
 
     def get_payment_status(self, appointment):
-        return getattr(appointment, 'last_payment_status_annotated', None)
+        return getattr(appointment, "last_payment_status_annotated", None)
