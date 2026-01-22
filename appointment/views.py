@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.db.models import Subquery, OuterRef
 from django.utils import timezone
 
 from django.db import transaction
@@ -25,6 +26,7 @@ from appointment.serializers import (
     AppointmentListSerializer,
     AppointmentDetailSerializer,
 )
+from payment.models import Payment
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -147,10 +149,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         User can only see own appointments.
         Staff can see all appointments.
         """
+        last_payment_status = Payment.objects.filter(
+            appointment=OuterRef('pk')
+        ).order_by('-created_at').values('status')[:1]
+
         query = (
             Appointment.objects.all()
+            .annotate(last_payment_status_annotated=Subquery(last_payment_status))
             .select_related("patient", "doctor_slot")
-            .prefetch_related("payments")
         )
         user = self.request.user
         if user.is_staff:

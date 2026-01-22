@@ -129,7 +129,4 @@ class AppointmentListSerializer(AppointmentSerializer):
         fields = AppointmentSerializer.Meta.fields + ("payment_status",)
 
     def get_payment_status(self, appointment):
-        last_payment = appointment.payments.order_by("-created_at").first()
-        if last_payment:
-            return last_payment.status
-        return None
+        return getattr(appointment, 'last_payment_status_annotated', None)
