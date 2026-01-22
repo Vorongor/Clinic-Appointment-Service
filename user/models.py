@@ -69,15 +69,6 @@ class Patient(models.Model):
     phone_number = models.CharField(max_length=20, blank=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
 
-    @property
-    def total_unpaid_amount(self):
-        """
-        Calculates the total amount of money the patient owes.
-        Uses the logic from has_penalty for consistency.
-        """
-        penalty = self.user.has_penalty
-        return penalty if penalty else 0.00
-
     def __str__(self):
         return (
             f"{self.user.first_name} "
