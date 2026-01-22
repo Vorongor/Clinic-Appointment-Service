@@ -44,6 +44,12 @@ class Payment(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["appointment", "payment_type"],
+                name="unique_appointment",
+            )
+        ]
 
     def __str__(self) -> str:
         return (f"Payment #{self.id} | {self.payment_type} | {self.status} "

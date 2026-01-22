@@ -1,3 +1,4 @@
+from django.db.models import Sum, Q
 from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -9,7 +10,6 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from user.models import Patient
 from user.serializers import UserSerializer, PatientSerializer
-
 
 TokenObtainPairView = extend_schema_view(
     post=extend_schema(tags=["User"])
@@ -43,7 +43,19 @@ class PatientViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
+        return (
+            Patient.objects
+            .select_related("user")
+            .annotate(
+                total_unpaid_amount=Sum(
+                    "user__appointments__payments__money_to_pay",
+                    filter=Q(
+                        user__appointments__payments__status="PENDING"
+                    ),
+                )
+            )
+            .filter(user=self.request.user)
+        )
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
