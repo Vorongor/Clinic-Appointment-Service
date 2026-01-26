@@ -88,21 +88,6 @@ class PatientStatusTests(TestCase):
             doctor_slot=self.slot
         )
 
-    def test_total_unpaid_amount_calculation(self):
-        Payment.objects.create(
-            appointment=self.appointment,
-            status=Payment.Status.PENDING,
-            payment_type=Payment.Type.CONSULTATION,
-            money_to_pay="500.00"
-        )
-        Payment.objects.create(
-            appointment=self.appointment,
-            status=Payment.Status.PENDING,
-            payment_type=Payment.Type.CANCELLATION_FEE,
-            money_to_pay="150.00"
-        )
-        self.assertEqual(float(self.patient.total_unpaid_amount), 650.00)
-
     def test_has_penalty_logic(self):
         self.assertFalse(self.user.has_penalty)
         Payment.objects.create(

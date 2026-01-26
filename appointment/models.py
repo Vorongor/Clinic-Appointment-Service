@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 from doctor.models import DoctorSlot
 
@@ -61,4 +62,11 @@ class Appointment(models.Model):
         verbose_name_plural = "appointments"
         ordering = [
             "-booked_at",
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["doctor_slot"],
+                condition=~Q(status="CANCELLED"),
+                name="unique_active_slot_booking"
+            )
         ]
