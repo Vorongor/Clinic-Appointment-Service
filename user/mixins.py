@@ -13,7 +13,7 @@ class UserLogicMixin:
                     instance.save()
         except Exception as e:
             raise ValidationError({
-                "detail": f"Failed to update user data. Error: {str(e)}"
+                "detail": f"Failed to update user. Error: {str(e)}"
             })
 
     def perform_patient_create(self, serializer):
@@ -22,5 +22,5 @@ class UserLogicMixin:
                 serializer.save(user=self.request.user)
         except Exception as e:
             raise ValidationError({
-                "detail": f"Patient profile creation failed. Error: {str(e)}"
+                "detail": f"Patient creation failed. Error: {str(e)}"
             })

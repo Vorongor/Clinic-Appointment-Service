@@ -23,6 +23,9 @@ class UserSerializer(serializers.ModelSerializer):
             }
         }
 
+    def create(self, validated_data):
+        return get_user_model().objects.create_user(**validated_data)
+
 
 class PatientSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
