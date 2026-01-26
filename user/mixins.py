@@ -1,6 +1,7 @@
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
+
 class UserLogicMixin:
     def perform_user_update(self, serializer):
         try:

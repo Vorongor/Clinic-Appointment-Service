@@ -8,12 +8,21 @@ from user.models import Patient
 from user.serializers import UserSerializer, PatientSerializer
 from user.mixins import UserLogicMixin
 
-TokenObtainPairView = extend_schema_view(post=extend_schema(tags=["User"]))(TokenObtainPairView)
-TokenRefreshView = extend_schema_view(post=extend_schema(tags=["User"]))(TokenRefreshView)
+
+TokenObtainPairView = extend_schema_view(
+    post=extend_schema(tags=["User"])
+)(TokenObtainPairView)
+
+
+TokenRefreshView = extend_schema_view(
+    post=extend_schema(tags=["User"])
+)(TokenRefreshView)
+
 
 @extend_schema(tags=["User"])
 class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
+
 
 @extend_schema(tags=["User"])
 class ManageUserView(UserLogicMixin, generics.RetrieveUpdateAPIView):
@@ -26,6 +35,7 @@ class ManageUserView(UserLogicMixin, generics.RetrieveUpdateAPIView):
 
     def perform_update(self, serializer):
         self.perform_user_update(serializer)
+
 
 @extend_schema(tags=["Patient"])
 class PatientViewSet(UserLogicMixin, viewsets.ModelViewSet):
