@@ -59,3 +59,16 @@ def sync_pending_payments():
 
         except Exception as e:
             logger.error(f"Error processing payment {payment.id}: {str(e)}")
+
+
+@shared_task
+def renew_mised_payments():
+    appointments = Appointment.objects.filter(
+        payments__isnull=True
+    ).distinct()
+
+    for appointment in appointments:
+        create_stripe_payment_task(
+            appointment_id=appointment.id,
+            payment_type_value=Payment.Type.CONSULTATION
+        ).delay()
