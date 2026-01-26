@@ -10,13 +10,8 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = (
-            "id",
-            "email",
-            "password",
-            "first_name",
-            "last_name",
-            "is_staff",
-            "has_penalty"
+            "id", "email", "password", "first_name",
+            "last_name", "is_staff", "has_penalty"
         )
         read_only_fields = ("id", "is_staff", "has_penalty")
         extra_kwargs = {
@@ -31,32 +26,15 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return get_user_model().objects.create_user(**validated_data)
 
-    def update(self, instance, validated_data):
-        password = validated_data.pop("password", None)
-        user = super().update(instance, validated_data)
-        if password:
-            user.set_password(password)
-            user.save()
-        return user
-
 
 class PatientSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
-    total_unpaid_amount = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        read_only=True,
-    )
+    total_unpaid_amount = serializers.ReadOnlyField()
 
     class Meta:
         model = Patient
         fields = (
-            "id",
-            "user",
-            "email",
-            "birth_date",
-            "phone_number",
-            "gender",
-            "total_unpaid_amount"
+            "id", "user", "email", "birth_date",
+            "phone_number", "gender", "total_unpaid_amount"
         )
         read_only_fields = ("id", "user", "total_unpaid_amount")
