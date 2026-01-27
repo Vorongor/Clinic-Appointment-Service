@@ -1,5 +1,6 @@
 from django.db import models
-from django.conf import settings
+from django.db.models import Q, F, Func, CheckConstraint
+from django.contrib.postgres.constraints import ExclusionConstraint
 from specializations.models import Specialization
 
 
@@ -29,6 +30,18 @@ class DoctorSlot(models.Model):
     class Meta:
         ordering = ["start"]
         unique_together = ("doctor", "start", "end")
+        constraints = [
+            CheckConstraint(
+                condition=Q(start__lt=F("end")),
+                name="start_before_end",
+            ),
+            ExclusionConstraint(
+                name="no_overlapping_slots",
+                expressions=[
+                    (Func(F('start'), F('end'), function='tstzrange'), '&&'),
+                ],
+            )
+        ]
 
     def __str__(self):
         return (
