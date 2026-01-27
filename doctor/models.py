@@ -38,7 +38,7 @@ class DoctorSlot(models.Model):
             ExclusionConstraint(
                 name="no_overlapping_slots",
                 expressions=[
-                    (Func(F('start'), F('end'), function='tstzrange'), '&&'),
+                    (Func(F("start"), F("end"), function="tstzrange"), "&&"),
                 ],
             )
         ]
