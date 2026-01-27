@@ -172,11 +172,11 @@ class DoctorSlotNestedViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        created = []
-        for start, end in slots:
-            slot = DoctorSlot.objects.create(doctor_id=doctor_pk, start=start,
-                                             end=end)
-            created.append(slot)
+        slots_to_create = [
+            DoctorSlot(doctor_id=doctor_pk, start=start, end=end)
+            for start, end in slots
+        ]
+        created = DoctorSlot.objects.bulk_create(slots_to_create)
 
         out_serializer = DoctorSlotSerializer(created, many=True)
         return Response(out_serializer.data, status=status.HTTP_201_CREATED)
